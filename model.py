@@ -8,7 +8,7 @@ from numpy.random import binomial, normal
 
 
 ######################################################################################################
-#####  SEIR model with time-varying Beta as a geometric random walk #################################
+#####  SIR model with time-varying Beta as a geometric random walk #################################
 
 def stochastic_sir_model(y, theta, theta_names, dt=1):
     """
@@ -69,4 +69,51 @@ def stochastic_sir_model(y, theta, theta_names, dt=1):
     
     # Ensure all compartments remain non-negative
     return np.maximum(y_next, 0)
+
+
+####################################################################
+######### Discrete-time Hawkes Process    ########################
+
+def dthp_model(state, theta, state_names, theta_names, observed_data, t):
+    """
+    Vectorized Discrete-time Hawkes Process for flu modeling.
+
+    Parameters:
+    - state: 2D array of state variables (num_particles x num_state_variables)
+    - theta: 2D array of parameters (num_particles x num_parameters)
+    - state_names: List of state variable names
+    - theta_names: List of parameter names
+    - observed_data: Dictionary containing observed data, including 'obs' key with array (num_time_steps)
+    - t: Current time step (scalar)
+
+    Returns:
+    - updated_state: DataFrame of updated state variables with state names as columns
+    """d
+
+    # Unpack state variables
+    lm_I, C_I, Rt = state.T.copy()  # Ensure state variables are writable
+
+    # Total population size
+    N = 2e5
+
+    # Create parameter dictionary
+    param = dict(zip(theta_names, theta.T))  # Transpose theta for particle-wise parameter handling
+    omega_I = param['omega_I']  # Infection kernel decay parameter
+    nu_beta = param['nu_beta']  # Noise parameter for Rt
+
+    # Reset lambdas
+    lm_I.fill(0)  
+    Rt *= np.exp(nu_beta * np.random.normal(0, 1, size=Rt.shape))
+    for ti in range(t):
+        kernel_values = omega_I * (1 - omega_I) ** (t - ti - 1)
+        lm_I += observed_data['obs'][ti] * kernel_values  # Broadcasting for all particles
+    # Adjust lambda with  cumulative infections
+    lm_I = np.random.poisson((1 - C_I / N) * Rt * lm_I , size=lm_I.shape)
+    
+    # Update cumulative infections
+    C_I += lm_I
+    # Stack updated variables
+    updated_state = np.column_stack((lm_I, C_I, Rt))
+    # Return updated state as DataFrame
+    return pd.DataFrame(updated_state, columns=state_names)
 
