@@ -23,6 +23,7 @@ def PMMH_kernel(model, model_type, Z_current, current_theta_particles, state_his
 
     Parameters:
     model: The model to be used.
+    model_type (str) : Type of model ('dthp' or 'SIR').
     Z_w (float): Current window of incremental log likelihood [t-tw, t] for each index m.
     current_theta_particles (ndarray): Current particles for the theta parameters.
     state_history (list): The history of the states over time.
