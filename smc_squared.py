@@ -15,7 +15,7 @@ from resampling import resampling_style
 def BMA_SMC2(
     model_dthp, model_seir, initial_state_info_dthp, initial_theta_info_dthp,
     initial_state_info_seir, initial_theta_info_seir, observed_data, num_state_particles,
-    num_theta_particles, resampling_threshold=0.5, observation_distribution, 
+    num_theta_particles, resampling_threshold=0.5, observation_distribution, tw=1,
     resampling_method='stratified', forecast_days=0, show_progress=True
 ):
     """
@@ -30,6 +30,7 @@ def BMA_SMC2(
     - num_state_particles, num_theta_particles: Number of state and theta particles.
     - resampling_threshold: Effective sample size threshold for resampling.
     - observation_distribution (func): Type of observation likelihood.
+    - tw (int): Refreshing whindow for the model evidence.
     - resampling_method: Method used for resampling.
     - forecast_days: Number of days to forecast beyond observed data.
     - show_progress: Whether to display progress bar.
@@ -148,7 +149,7 @@ def BMA_SMC2(
                 new_particles = Parallel(n_jobs=10)(delayed(PMH_kernel)(
                     model, model_data['name'], Z[m], model_data['current_theta'], model_data['state_history'], model_data['theta_names'],
                     observed_data.iloc[:t + 1], model_data['state_names'], initial_theta_info, num_state_particles,
-                    theta_mean, theta_covariance, observation_distribution, m, t) for m in range(num_theta_particles))
+                    theta_mean, theta_covariance,  observation_distribution, resampling_method, m, t) for m in range(num_theta_particles))
         
                 # Update particles and states
                 model_data['current_theta'] = np.array([new['theta'] for new in new_particles])
@@ -200,8 +201,8 @@ def BMA_SMC2(
         progress_bar.close()
     
     # Calculate the evidence for both models
-    EV_dthp = prod_window(model_evid_dthp, window_size=1)
-    EV_seir = prod_window(model_evid_seir, window_size=1)
+    EV_dthp = prod_window(model_evid_dthp, window_size=tw)
+    EV_seir = prod_window(model_evid_seir, window_size=tw)
     
     # Calculate the weights for the models
     W_dthp = EV_dthp / (EV_dthp + EV_seir)
