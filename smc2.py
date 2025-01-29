@@ -78,13 +78,15 @@ def BMA_SMC2(
                 trajectories = model_dthp(state_particles, theta, model_data['state_names'], model_data['theta_names'], observed_data, t)
             else:
                 trajectories = solve_model(model_seir, theta, state_particles, model_data['state_names'], model_data['theta_names'], t-1, t)
+            model_points = trajectories.to_numpy()
             
             weights = compute_log_weight(current_data_point, trajectories, theta, model_data['theta_names'], observation_distribution)
             normalized_weights = np.exp(weights - np.max(weights)) / np.sum(np.exp(weights - np.max(weights)))
             resampled_indices = resampling_style(normalized_weights, resampling_method)
+            current_state_particles = model_points[resampled_indices]
             
             return {
-                'state_particles': trajectories.to_numpy()[resampled_indices],
+                'state_particles': current_state_particles,
                 'likelihood': np.mean(np.exp(weights)),
                 'theta': trans_theta,
             }
@@ -114,12 +116,81 @@ def BMA_SMC2(
             ESS_theta[t] = 1 / np.sum(theta_weights[:, t] ** 2)
         
         # Resampling step
-        for model_data, ESS_theta, Z_arr, theta_weights in (
-            (dthp_data, ESS_theta_dthp, Z_arr_dthp, theta_weights_dthp),
-            (seir_data, ESS_theta_seir, Z_arr_seir, theta_weights_seir),
-        ):
-            if ESS_theta[t] < resampling_threshold * num_theta_particles:
-                resampled_indices = resampling_style(theta_weights[:, t], resampling_method)
-                model_data['current_theta'] = model_data['current_theta'][resampled_indices]
-                model_data['current_state'] = model_data['current_state'][resampled_indices]
-                theta_weights[:, t] = np.ones(num_theta_particles) / num_theta_particles
+       for model_data, model, initial_state_info, initial_theta_info, theta_weights, Z, theta_covariance, theta_mean, state_history, state_names, num_state_particles, num_theta_particles, observation_distribution, forecast_days in [
+    (dthp_data, model_dthp, initial_state_info_dthp, initial_theta_info_dthp, theta_weights_dthp, Z_dthp, theta_covariance_dthp, theta_mean_dthp, dthp_data['state_names'], num_state_particles, num_theta_particles, observation_distribution, forecast_days),
+    (seir_data, model_seir, initial_state_info_seir, initial_theta_info_seir, theta_weights_seir, Z_seir, theta_covariance_seir, theta_mean_seir, seir_data['state_names'], num_state_particles, num_theta_particles, observation_distribution, forecast_days)
+]:
+    # Resampling step
+    if model_data['ESS_theta'][t] < resampling_threshold * num_theta_particles:
+        resampled_indices = resampling_style(theta_weights[:, t], resampling_method)
+        Z = Z[resampled_indices]
+        
+        # Calculate the weighted mean and covariance for theta
+        theta_mean = np.average(model_data['current_theta'], axis=0, weights=theta_weights[:, t])
+        theta_covariance = np.cov(model_data['current_theta'].T, ddof=0, aweights=theta_weights[:, t])
+        
+        # Resample the data
+        model_data['current_theta'] = model_data['current_theta'][resampled_indices]
+        model_data['current_state'] = model_data['current_state'][resampled_indices]
+        
+        # Reset weights and run the PMMH kernel
+        theta_weights[:, t] = np.ones(num_theta_particles) / num_theta_particles
+        new_particles = Parallel(n_jobs=10)(delayed(PMH_kernel)(
+            model, model_data['name'], Z[m], model_data['current_theta'], model_data['state_history'], model_data['theta_names'],
+            observed_data.iloc[:t + 1], model_data['state_names'], initial_theta_info, num_state_particles,
+            theta_mean, theta_covariance, observation_distribution, m, t) for m in range(num_theta_particles))
+
+        # Update particles and states
+        model_data['current_theta'] = np.array([new['theta'] for new in new_particles])
+        model_data['current_state'] = np.array([new['state'] for new in new_particles])
+        Z = np.array([new['Z'] for new in new_particles])
+
+    # Final particle filter step for the last time step (forecasting)
+    if t == num_timesteps - 1:
+        # Initial state for the model
+        ini_state = initial_one_state(initial_state_info, num_state_particles)
+        current_state = np.array(ini_state['currentStateParticles'])
+        theta = np.median(model_data['current_theta'], axis=0)
+        theta = untransform_theta(theta, initial_theta_info)
+        
+        # Run Particle Filter for forecasting
+        PF_results = Particle_Filter(model, model_data['name'], model_data['state_names'], current_state, theta, 
+                                     model_data['theta_names'], observed_data, num_state_particles, resampling_method, 
+                                     observation_distribution, forecast_days=forecast_days, add=1, end=True)
+        traj_state = PF_results['traj_state']
+
+    # Update progress bar
+    if show_progress:
+        progress_bar.update(1)
+
+    # Perform garbage collection to free up memory
+    gc.collect()
+
+# Close the progress bar
+if show_progress:
+    progress_bar.close()
+
+# Calculate the evidence for both models
+EV_dthp = prod_window(model_evid_dthp, window_size=1)
+EV_seir = prod_window(model_evid_seir, window_size=1)
+
+# Calculate the weights for the models
+W_dthp = EV_dthp / (EV_dthp + EV_seir)
+W_seir = 1 - W_dthp
+
+# Extend weights if forecast
+W_dthp = extend_array(W_dthp, num_timesteps + forecast_days)
+
+# Return the results from both models
+return {
+    'weight_dthp': W_dthp,
+    'weight_seir': W_seir,
+    'state_history_dthp': dthp_data['state_history'],
+    'state_history_seir': seir_data['state_history'],
+    'traj_theta_dthp': traj_theta_dthp,
+    'traj_theta_seir': traj_theta_seir,
+    'traj_state_dthp': traj_state_dthp,
+    'traj_state_seir': traj_state_seir,
+    'ESS_theta_dthp': ESS_theta_dthp,
+    'ESS_theta_seir': ESS_theta_seir,
+}
