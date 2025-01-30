@@ -134,33 +134,32 @@ np.random.seed(123) # Set a seed for reproducibility
 ### SIR initial state and prior distribution
 N_pop=2e5
 state_info_seir = {
-    'S': {'prior': [S_0_min, S_0_max, 0, 0, 'uniform']},  
-    'I': {'prior': [0, 3, 0, 0, 'uniform']},  
-    'R': {'prior': [0, 0, 0, 0, 'uniform']}, 
-    'NI': {'prior': [0, 0, 0,0, 'uniform']},    
-    'B': {'prior': [0, np.inf, 0.725, 0.01, 'normal']},  
+    'S': {'prior': [S_0_min, S_0_max, 0, 0, 'uniform']},  # Susceptibles
+    'I': {'prior': [0, 3, 0, 0, 'uniform']},  # Infected
+    'R': {'prior': [0, 0, 0, 0, 'uniform']},  # Removed (Recovered or Deceased)
+    'NI': {'prior': [0, 0, 0,0, 'uniform']},  # Newly Infected
+    'B': {'prior': [0, np.inf, 0.725, 0.01, 'normal']},  # Transmission rate (Beta)
 }
 
 theta_info_seir = {
-        'gamma':{'prior': [0.1, 0.2, 0.16, 0.1,'truncnorm','log']},
-        'nu_beta': {'prior': [0.05, 0.15,0.1,0.05, 'truncnorm','log']},
-        'phi': {'prior': [1e-5, 0.1,0,0, 'uniform','log'] }
+    'gamma': {'prior': [0.1, 0.2, 0.16, 0.1,'truncnorm','log']},  # Removal rate (Inverse of infectious period)
+    'nu_beta': {'prior': [0.05, 0.15,0.1,0.05, 'truncnorm','log']},  # Standard deviation of RW process (Beta variability)
+    'phi': {'prior': [1e-5, 0.1,0,0, 'uniform','log']}  # Overdispersion parameter
 }
 
-
-
-### DTHP initial state and prior distribution
+# DTHP model state and parameter information
 state_info_dthp = {
-    'NI': {'prior': [0, 3, 0,0, 'uniform']},
-    'C_I': {'prior': [0, 0, 0,0, 'uniform']},
-    'Rt': {'prior': [0, np.inf, 4.25, 0.15, 'normal']}
+    'NI': {'prior': [0, 3, 0,0, 'uniform']},  # Newly Infected (lamabda_H(0))
+    'C_I': {'prior': [0, 0, 0,0, 'uniform']},  # Cumulative Infected
+    'Rt': {'prior': [0, np.inf, 4.25, 0.15, 'normal']}  # Reproduction Number
 }
 
 theta_info_dthp = {
-     'omega_I':{'prior': [0.1, 0.2,0.16, 0.1,'truncnorm','log']},
-     'nu_beta':  {'prior': [0.05,0.15,0.1,0.05, 'uniform', 'log']},
-     'phi': {'prior': [0.001, 0.1,0,0, 'uniform','log'] },  # Overdisperssion
+    'omega_I': {'prior': [0.1, 0.2,0.16, 0.1,'truncnorm','log']},  # Decay parameter in the tiggering kernel
+    'nu_beta': {'prior': [0.05,0.15,0.1,0.05, 'uniform', 'log']},  # Standard deviation of RW process (Beta variability)
+    'phi': {'prior': [0.001, 0.1,0,0, 'uniform','log']}  # Overdispersion parameter
 }
+
 
 
 days=t_end-14
