@@ -151,7 +151,7 @@ state_info_sir = {
 theta_info_sir = {
     'gamma': {'prior': [0.1, 0.2, 0.16, 0.1,'truncnorm','log']},  # Removal rate (Inverse of infectious period)
     'nu_beta': {'prior': [0.05, 0.15,0.1,0.05, 'truncnorm','log']},  # Standard deviation of RW process (Beta variability)
-    'phi': {'prior': [1e-5, 0.1,0,0, 'uniform','log']}  # Overdispersion parameter
+    'phi': {'prior': [1e-3, 0.1,0,0, 'uniform','log']}  # Overdispersion parameter
 }
 
 # DTHP model state and parameter information
@@ -164,7 +164,7 @@ state_info_dthp = {
 theta_info_dthp = {
     'omega_I': {'prior': [0.1, 0.2,0.16, 0.1,'truncnorm','log']},  # Decay parameter in the tiggering kernel
     'nu_beta': {'prior': [0.05,0.15,0.1,0.05, 'uniform', 'log']},  # Standard deviation of RW process (Beta variability)
-    'phi': {'prior': [0.001, 0.1,0,0, 'uniform','log']}  # Overdispersion parameter
+    'phi': {'prior': [1e-3, 0.1,0,0, 'uniform','log']}  # Overdispersion parameter
 }
 
 
