@@ -45,7 +45,8 @@ def BMA_SMC2(
     Z_dthp, Z_seir = np.zeros(num_theta_particles), np.zeros(num_theta_particles)
     model_evid_dthp, model_evid_seir = np.zeros(num_timesteps), np.zeros(num_timesteps)
     likelihood_increment_dthp, likelihood_increment_seir = np.ones(num_theta_particles), np.ones(num_theta_particles)
-    theta_weights_dthp = theta_weights_seir = np.ones((num_theta_particles, num_timesteps)) / num_theta_particles
+    theta_weights_dthp = np.ones((num_theta_particles, num_timesteps)) / num_theta_particles
+    heta_weights_seir = theta_weights_dthp.copy()
     ESS_theta_dthp, ESS_theta_seir = np.zeros(num_timesteps), np.zeros(num_timesteps)
 
     # Initialize state and theta particles for both models
@@ -76,6 +77,7 @@ def BMA_SMC2(
     
     for t in range(num_timesteps):
         current_data_point = observed_data.iloc[t]
+        t_start, t_end = (0, 0) if t == 0 else (t - 1, t)
         
         def process_particle(model_type, theta_idx):
             model_data = dthp_data if model_type == 'dthp' else seir_data
@@ -86,7 +88,7 @@ def BMA_SMC2(
             if model_type == 'dthp':
                 trajectories = model_dthp(state_particles, theta, model_data['state_names'], model_data['theta_names'], observed_data, t)
             else:
-                trajectories = solve_model(model_seir, theta, state_particles, model_data['state_names'], model_data['theta_names'], t-1, t)
+                trajectories = solve_model(model_seir, theta, state_particles, model_data['state_names'], model_data['theta_names'], t_start, t_end)
             model_points = trajectories.to_numpy()
             
             weights = observation_distribution(current_data_point, trajectories, theta, model_data['theta_names'])
