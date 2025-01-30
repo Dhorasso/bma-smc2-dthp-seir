@@ -1,5 +1,5 @@
 ########################################################################################
-# This file contains code to handle constraint prameters and draw initail state and 
+# This script contains code to handle constraint prameters and draw initail state and 
 # parameter particles
 ##########################################################################################
 
