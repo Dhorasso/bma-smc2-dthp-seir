@@ -97,7 +97,7 @@ def dthp_model(state, theta, state_names, theta_names, observed_data, t):
     N = 2e5
 
     # Create parameter dictionary
-    param = dict(zip(theta_names, theta.T))  # Transpose theta for particle-wise parameter handling
+    param = dict(zip(theta_names, theta))  # Transpose theta for particle-wise parameter handling
     omega_I = param['omega_I']  # Infection kernel decay parameter
     nu_beta = param['nu_beta']  # Noise parameter for Rt
 
