@@ -15,8 +15,9 @@ from resampling import resampling_style
 def BMA_SMC2(
     model_dthp, model_sir, initial_state_info_dthp, initial_theta_info_dthp,
     initial_state_info_sir, initial_theta_info_sir, observed_data, num_state_particles,
-    num_theta_particles, resampling_threshold=0.5, observation_distribution, tw=1,
-    resampling_method='stratified', forecast_days=0, show_progress=True
+    num_theta_particles, resampling_threshold=0.5, observation_distribution, 
+    resampling_method='stratified', tw=1, pmmh_moves=5, c=0.5, n_jobs=10, 
+    forecast_days=0, show_progress=True
 ):
     """
     Perform Sequential Monte Carlo squared (SMC^2) for two models (dthp and sir), estimating the state and 
@@ -30,8 +31,11 @@ def BMA_SMC2(
     - num_state_particles, num_theta_particles: Number of state and theta particles.
     - resampling_threshold: Effective sample size threshold for resampling.
     - observation_distribution (func): Type of observation likelihood.
+    - resampling_method (str): Method used for resampling ('stratified', 'systematic', 'residual', 'multinomial').
     - tw (int): Refreshing whindow for the model evidence.
-    - resampling_method: Method used for resampling.
+    - pmmh_moves (int): Number of PMMH move in the rejuvenation step.
+    - c (int): scaling factor for the covariance matrix in the PMMH kernel.
+    - n_jobs (int): Number of processor in the PMMH parallel computing
     - forecast_days: Number of days to forecast beyond observed data.
     - show_progress: Whether to display progress bar.
 
@@ -107,8 +111,8 @@ def BMA_SMC2(
                 'theta': trans_theta,
             }
         
-        particles_dthp = Parallel(n_jobs=10)(delayed(process_particle)('dthp', m) for m in range(num_theta_particles))
-        particles_sir = Parallel(n_jobs=10)(delayed(process_particle)('sir', m) for m in range(num_theta_particles))
+        particles_dthp = Parallel(n_jobs=n_jobs)(delayed(process_particle)('dthp', m) for m in range(num_theta_particles))
+        particles_sir = Parallel(n_jobs=n_jobs)(delayed(process_particle)('sir', m) for m in range(num_theta_particles))
         
         # Update state and theta particles
         for model_data, model, initial_state_info, initial_theta_info, theta_weights, Z, state_names, traj_theta, particles, likelihood_increment, Z_arr, model_evid, ESS_theta, traj_state in [
@@ -148,10 +152,10 @@ def BMA_SMC2(
                 
                 # Reset weights and run the PMMH kernel
                 theta_weights[:, t] = np.ones(num_theta_particles) / num_theta_particles
-                new_particles = Parallel(n_jobs=10)(delayed(PMH_kernel)(
+                new_particles = Parallel(n_jobs=n_jobs)(delayed(PMH_kernel)(
                     model, model_data['name'], Z[m], model_data['current_theta'], model_data['state_history'], model_data['theta_names'],
-                    observed_data.iloc[:t + 1], model_data['state_names'], initial_theta_info, num_state_particles,
-                    theta_mean, theta_covariance,  observation_distribution, resampling_method, m, t) for m in range(num_theta_particles))
+                    observed_data.iloc[:t + 1], model_data['state_names'], initial_theta_info, num_state_particles, theta_mean,
+                    theta_covariance,  observation_distribution, resampling_method, m, t, pmmh_moves, c) for m in range(num_theta_particles))
         
                 # Update particles and states
                 model_data['current_theta'] = np.array([new['theta'] for new in new_particles])
@@ -160,7 +164,7 @@ def BMA_SMC2(
 
         
             # Update the trajectory of theta over time
-            traj_theta = Parallel(n_jobs=10)(
+            traj_theta = Parallel(n_jobs=n_jobs)(
                 delayed(lambda traj, j: pd.DataFrame(
                     {'time': list(traj['time']) + [t], 
                      **{name: list(traj[name]) + [untransform_theta(model_data['current_theta'][j], initial_theta_info)[i]] 
@@ -184,7 +188,7 @@ def BMA_SMC2(
                 # Run Particle Filter for forecasting
                 PF_results = Particle_Filter(model, model_data['name'], model_data['state_names'], current_state, theta, 
                                              model_data['theta_names'], observed_data, num_state_particles, observation_distribution,
-                                             resampling_method, forecast_days=forecast_days, add=1, end=True)
+                                             resampling_method, forecast_days=forecast_days, add=1, end=True, n_jobs=n_jobs)
                 traj_state = PF_results['traj_state']
                 if model_data['name']=='dthp':
                     traj_state_dthp = traj_state
