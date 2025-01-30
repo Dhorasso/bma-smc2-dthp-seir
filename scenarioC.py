@@ -1,5 +1,5 @@
 #####################################################################################
-# Application of SMC^2 for the Experiment 2 in the paper
+# Application of     BMA-SMC^2 for the Scenario C in the paper
 # Note: All functions must be in the same folder.
 #####################################################################################
 
@@ -19,7 +19,7 @@ from plotnine import *
 from tqdm import tqdm
 
 # SMC2 Libraries
-from models import 
+from models import stochastic_sir_model, dthp_model
 from smc_squared import BMA_SMC2
 from smc_visualization import trace_smc, plot_smc
 # Style Configuration
@@ -123,37 +123,62 @@ def obs_dist_poisson(observed_data, model_data, theta, theta_names):
     return log_likelihoods
 
 #################################################################################################
-############ SEPTP 4: Run the SMC^2 #####################################################################
+############ SEPTP 3: Run the SMC^2 #####################################################################
 # You need to defined initial conditions for the state and prior for the parameter you want to estimate
 ##########################################################################################################
 
 np.random.seed(123) # Set a seed for reproducibility
 
 # # ##### # setting state and parameter
-state_info = {
-    'S': {'prior': [200000-5, 200000, 0,0, 'uniform', 'none']}, # it doesn' maqtter if you put 'none' or not
-    'E': {'prior': [0, 0, 0,0, 'uniform','noene']},
-    'I': {'prior': [0, 5, 0,0, 'uniform','none']},
-    'R': {'prior': [0, 0, 0,0, 'uniform','none']},
-     'NI': {'prior': [0, 0, 0,0, 'uniform','none']},
-     'B': {'prior': [0.2, 0.5, 0,0, 'uniform','none']}
+
+### SIR initial state and prior distribution
+N_pop=2e5
+state_info_seir = {
+    'S': {'prior': [S_0_min, S_0_max, 0, 0, 'uniform']},  
+    'I': {'prior': [0, 3, 0, 0, 'uniform']},  
+    'R': {'prior': [0, 0, 0, 0, 'uniform']}, 
+    'NI': {'prior': [0, 0, 0,0, 'uniform']},    
+    'B': {'prior': [0, np.inf, 0.725, 0.01, 'normal']},  
+}
+
+theta_info_seir = {
+        'gamma':{'prior': [0.1, 0.2, 0.16, 0.1,'truncnorm','log']},
+        'nu_beta': {'prior': [0.05, 0.15,0.1,0.05, 'truncnorm','log']},
+        'phi': {'prior': [1e-5, 0.1,0,0, 'uniform','log'] }
 }
 
 
-theta_info = {
-    'sigma': {'prior': [0.3, 0.6,0,0, 'uniform','log']},
-    'gamma':{'prior': [1e-5, 1, 0.14, 0.01,'truncnorm','log']},
-      'nu_beta': {'prior': [0.05, 0.15,0.1,0.05, 'truncnorm','log']},   
+
+### DTHP initial state and prior distribution
+state_info_dthp = {
+    'NI': {'prior': [0, 3, 0,0, 'uniform']},
+    'C_I': {'prior': [0, 0, 0,0, 'uniform']},
+    'Rt': {'prior': [0, np.inf, 4.25, 0.15, 'normal']}
 }
+
+theta_info_dthp = {
+     'omega_I':{'prior': [0.1, 0.2,0.16, 0.1,'truncnorm','log']},
+     'nu_beta':  {'prior': [0.05,0.15,0.1,0.05, 'uniform', 'log']},
+     'phi': {'prior': [0.001, 0.1,0,0, 'uniform','log'] },  # Overdisperssion
+}
+
+
+days=t_end-14
+fday=14
 
 smc2_results = BMA_SMC2(
-    model=stochastic_seir_model,
-    initial_state_info=state_info,
-    initial_theta_info=theta_info,
-    observed_data=simulated_data,
+    model_sir=stochastic_sir_model,
+    model_dthp= dthp_model_flu, 
+    initial_state_info_dthp=state_info_dthp , 
+    initial_theta_info_dthp=theta_info_dthp , 
+    model_seir=stochastic_model_sir, 
+    initial_state_info_seir=state_info_seir , 
+    initial_theta_info_seir=theta_info_seir , 
+    observed_data=simulated_data[:days+1],
     num_state_particles=200,
     num_theta_particles=400,
     observation_distribution=obs_dist_poisson,
+    forecast_days=fday,
 )
 
 
