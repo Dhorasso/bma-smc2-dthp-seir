@@ -36,7 +36,7 @@ def BMA_SMC2(
     - show_progress: Whether to display progress bar.
 
     Returns:
-    - Dictionary with weights, state trajectories, parameter trajectories, ESS, and acceptance rates.
+    - Dictionary with modle weights, state trajectories, parameter trajectories, and ESS
     """
     num_timesteps = len(observed_data)
     
