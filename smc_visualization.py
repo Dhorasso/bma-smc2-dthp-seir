@@ -98,7 +98,12 @@ def plot_smc(matrix, ax, separation_point, Date=None, window=1):
 
     # Add labels and legend
    
-
+def compute_model_average(matrix_dict_dthp, matrix_dict_sir, w_dthp, w_sir):
+    matrix_dict_avg = {}
+    for key in matrix_dict_dthp.keys():
+        if key in matrix_dict_sir.keys():
+            matrix_dict_avg[key] = w_dthp * matrix_dict_dthp[key] + w_sir * matrix_dict_sir[key]
+    return matrix_dict_avg
 
 
 def corrected_matrix(matrix):
