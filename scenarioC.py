@@ -134,7 +134,7 @@ np.random.seed(123) # Set a seed for reproducibility
 ### SIR initial state and prior distribution
 N_pop=2e5
 state_info_seir = {
-    'S': {'prior': [S_0_min, S_0_max, 0, 0, 'uniform']},  # Susceptibles
+    'S': {'prior': [N_pop-3, N_pop, 0, 0, 'uniform']},  # Susceptibles
     'I': {'prior': [0, 3, 0, 0, 'uniform']},  # Infected
     'R': {'prior': [0, 0, 0, 0, 'uniform']},  # Removed (Recovered or Deceased)
     'NI': {'prior': [0, 0, 0,0, 'uniform']},  # Newly Infected
