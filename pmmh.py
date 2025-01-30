@@ -10,7 +10,7 @@ import numpy as np
 from scipy.stats import multivariate_normal
 from scipy.stats import uniform, norm, truncnorm, lognorm, gamma, invgamma
 from ssm_prior_draw import*
-from smc import  Parallele_Particle_Filter
+from smc import  Particle_Filter
 
 
 
@@ -75,7 +75,7 @@ def PMMH_kernel(model, model_type, Z_current, current_theta_particles, state_his
             
             # Run particle filter to evaluate proposal likelihood
             untrans_theta_proposal = untransform_theta(theta_proposal, initial_theta_info)
-            PF_results = Parallele_Particle_Filter(
+            PF_results = Particle_Filter(
                 model, model_type, state_names, state_current_t_k, untrans_theta_proposal,
                 theta_names, observed_data, num_state_particles,
                 observation_distribution, resampling_method
