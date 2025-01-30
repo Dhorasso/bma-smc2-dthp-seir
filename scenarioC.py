@@ -192,8 +192,8 @@ smc2_results = BMA_SMC2(
 ############################################################################################################
 
 ###  Evolution of the model weights
-w_dthp = M['weight_dthp']  
-w_seir = M['weight_seir']
+w_dthp = smc2_results['weight_dthp']  
+w_seir = smc2_results['weight_seir']
 
 # Plotting
 fig, ax = plt.subplots(figsize=(17/3, 4))  
@@ -253,9 +253,7 @@ for i, (method, matrix) in enumerate([
     ('SIR', matrix_dict_seir['NI']),
     ('MA', matrix_dict_avg['NI'])
 ]):
-    # Plot SMC results using a custom function
     plot_smc(matrix, ax=axs[0, i], separation_point=separation_point,  window=window)
-    
     # Add observed data for days 1 to `days`
     axs[0, i].scatter(
         simulated_data['time'][:days], 
@@ -290,7 +288,6 @@ for i, (method, matrix) in enumerate([
 ]):
     # Plot SMC results
     plot_smc(matrix, ax=axs[1, i],separation_point=separation_point,  window=window)
-    
     # Plot true Rt curve
     axs[1, i].plot(
         simulated_data['time'], 
@@ -342,63 +339,59 @@ plt.subplots_adjust(wspace=0.05, hspace=0.1)
 ##############################################################################
 
 # Example of labels 
-L = [ r'$\sigma$', r'$\gamma$', r'$\nu_{\beta}$']
 
-data_for_corner = []
-labels = []
 
-# Collect data and labels for each parameter
-for i, (state, matrix) in enumerate(matrix_dict_theta_sir.items()):
-    data = matrix[:, -1]  # Using the last column of each matrix
-    data_for_corner.append(data)
-    labels.append(L[i])
+# Example label
+L1 = [r'$\omega$', r'$\nu_{1}$', r'$\phi_1$']
+L2 = [r'$\gamma$', r'$\nu_{2}$', r'$\phi_2$']
 
-data_for_corner = np.column_stack(data_for_corner)
+# Data sources
+trajParticles1 = smc2_results['traj_theta_dthp']
+trajParticles2 = smc2_results['traj_theta_seir']
 
-# Create a 3x3 subplot layout
-N=len(matrix_dict_theta_sir) 
-fig, axs = plt.subplots(N-1, N, figsize=(18, 8))
+matrix_dict1 = merge_dataframes(trajParticles1)
+matrix_dict2 = merge_dataframes(trajParticles2)
 
-# Row 1: Plot time series using `plot_smc(matrix)` for each parameter
-for i, (state, matrix) in enumerate(matrix_dict_theta_sir.items()):
-    # plot_smc2(matrix_dict_full[state], ax=axs[0, i])
-    plot_smc(matrix, ax=axs[0, i])  # Assuming plot_smc returns data suitable for plotting
-    # axs[0, i].set_title(f'Time Series of {L[i]}', fontsize=14)
-    axs[0, i].set_xlabel('Time (days)', fontsize=18, fontweight='bold')
-    axs[0, i].set_ylabel(L[i],  fontsize=18, fontweight='bold')
-    
-    # Add a horizontal line for the true parameter values
-    if i<2:
-        axs[0, i].axhline(y=true_theta[i], color='orange', linestyle='--', linewidth=3, label='True Value')
-axs[0, 1].legend(loc='upper left')
+# Combined number of rows and columns for subplots
+nrows, ncols = 2, 3
+fig, axes = plt.subplots(nrows=nrows, ncols=ncols, figsize=(20, 8))
 
-# Row 2: Histograms for each parameter
-for idx, label in enumerate(labels):
-    axs[1, idx].hist(data_for_corner[:, idx], bins=20, density=True, color='navy', alpha=0.4, lw=5)
-    sns.kdeplot(data_for_corner[:, idx], ax=axs[1, idx], color='dodgerblue', lw=3)
-    
+# Flatten the axes array for easy iteration
+axes = axes.flatten()
+
+# Iterate and plot for the first dataset
+for i, (state, matrix) in enumerate(matrix_dict1.items()):
+    ax = axes[i]  # Current axis
+    plot_smc(matrix, ax=ax)   
     # Calculate 0.25 and 0.975 CIs
-    ci_025 = np.percentile(data_for_corner[:, idx], 2.5)
-    ci_975 = np.percentile(data_for_corner[:, idx], 97.5)
-    median_estimate = np.median(data_for_corner[:, idx])
-    
+    ci_025 = np.percentile(matrix[:, -1], 2.5)
+    ci_975 = np.percentile(matrix[:, -1], 97.5)
+    median_estimate = np.mean(matrix[:, -1])
+    ax.set_title(f'{L1[i]}= {median_estimate:.3f} (95%CrI: [{ci_025:.3f}, {ci_975:.3f}])', fontsize=18, fontweight='bold')
+    ax.set_ylabel(L1[i], fontsize=25, fontweight='bold')
+# Iterate and plot for the second dataset
+for i, (state, matrix) in enumerate(matrix_dict2.items()):
+    ax = axes[i + 3]  # Move to the second row
+    plot_smc(matrix, ax=ax)
+    # Calculate 0.25 and 0.975 CIs
+    ci_025 = np.percentile(matrix[:, -1], 2.5)
+    ci_975 = np.percentile(matrix[:, -1], 97.5)
+    median_estimate = np.mean(matrix[:, -1])
     # Set title including the median value
-    axs[1, idx].set_title(f'{label}= {median_estimate:.3f} (95%CrI: [{ci_025:.3f}, {ci_975:.3f}])', fontsize=14, fontweight='bold')
-    
-    axs[1, idx].set_xlabel(L[idx], fontsize=18, fontweight='bold')
-    axs[1, idx].set_ylabel('Density', fontsize=18, fontweight='bold')
-    
-    # Add vertical line for true value and median
-    if idx<2:
-        axs[1, idx].axvline(true_theta[idx], color='orange', linestyle='--', linewidth=3, label='True Value')
-    axs[1, idx].axvline(median_estimate, color='k', linewidth=3, label='Median')
-    
-    # Add dashed lines for 0.25 and 0.975 CIs
-    axs[1, idx].axvline(ci_025, color='dodgerblue', linestyle='--', linewidth=2)
-    axs[1, idx].axvline(ci_975, color='dodgerblue', linestyle='--', linewidth=2)
-    
-    # Add legend
-axs[1, 1].legend()
-
+    ax.set_title(f'{L2[i]}= {median_estimate:.3f} (95%CrI: [{ci_025:.3f}, {ci_975:.3f}])', fontsize=18, fontweight='bold')
+    # Add a true value line for the first state in the second dataset if applicable
+    if i == 0:
+        ax.axhline(true_theta[i + 1], color='orange', linestyle='--', linewidth=3, label='True Value')
+        # ax.legend(fontsize=12)
+    # Customize labels
+    ax.set_xlabel('Time (days)', fontsize=16, fontweight='bold')
+    ax.set_ylabel(L2[i], fontsize=25, fontweight='bold')
+# Improve overall appearance: grid, tight layout, etc.
+fig.text(0.02, 0.97, 'C', fontsize=50, fontweight='bold', ha='center', va='center')
+# Improve overall appearance: grid, tight layout, etc.
+for ax in axes.flat:
+    ax.grid(True, linestyle='--', alpha=0.9)  # Add grid with dashed lines
+    ax.set_facecolor('whitesmoke')  # Add background color for each subplot
+# Adjust layout and show the complete figure
 plt.tight_layout()
 plt.show()
