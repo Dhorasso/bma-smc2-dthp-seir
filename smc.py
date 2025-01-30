@@ -63,8 +63,8 @@ def Particle_Filter(
         
         if model_type == 'dthp':
             trajectories = model(current_state_particles, theta, state_names, theta_names, data_app, t)
-        elif model_type == 'SIR':
-            trajectories = solve_model(model, theta, current_state_particles, state_names, theta_names, t_start, t_end)
+        elif model_type == 'sir':
+            trajectories = state_transition(model, theta, current_state_particles, state_names, theta_names, t_start, t_end)
         else:
             raise ValueError("Unknown model type. Use 'dthp' or 'sir'.")
         
