@@ -23,7 +23,7 @@ from models import stochastic_sir_model, dthp_model
 from smc_squared import BMA_SMC2
 from smc_visualization import trace_smc, plot_smc
 # Style Configuration
-
+plt.style.use('seaborn-v0_8-white')
 
 ############  SEPTP 1:Import/create your dataset ###########################
 #### Generate the simulated data with time varying beta ###############
@@ -181,13 +181,37 @@ smc2_results = BMA_SMC2(
 )
 
 
-# Print the Marginal log-likelihood
-print("Marginal log-likelihood:", smc2_results['margLogLike'])
+
 
 ##########################################################################################################
-########## SETP5: Visualize the Results ####################################################################
+########## SETP4: Visualize the Results ####################################################################
 # You can plot the filtered estimate of the state and parametersx
 ############################################################################################################
+
+w_dthp = M['weight_dthp']  
+w_seir = M['weight_seir']
+
+# Plotting
+fig, ax = plt.subplots(figsize=(17/3, 4))  
+ax.plot(w_dthp, label='Weight dthp', color='orange', linewidth=2, alpha=0.8)
+ax.plot(w_seir, label='Weight seir', color='dodgerblue', linewidth=2, alpha=0.8)
+ax.grid(True, linestyle='--', alpha=0.7)  # Add grid with dashed lines
+ax.set_facecolor('whitesmoke')  # Add light background color to the plot area
+# Adding labels and title with improved fonts
+ax.set_xlabel('Time (days)', fontsize=18, fontweight='bold', labelpad=10)
+ax.set_ylabel('Model weights', fontsize=18, fontweight='bold', labelpad=10)
+ax.set_title('Scenario 3', fontsize=18, fontweight='bold', pad=15)
+# Customize ticks
+ax.tick_params(axis='both', which='major', labelsize=16)
+ax.tick_params(axis='both', which='minor', labelsize=10)
+ax.axvline(x=separation_point, color='black', linestyle='--', linewidth=2)
+ax.legend(fontsize=12, loc='upper right', frameon=True, shadow=True, facecolor='white')
+# Tight layout for better spacing
+fig.tight_layout()
+# Display the plot
+plt.show()
+
+
 
 # state trajectory particles and extract corresponding matrix
 
