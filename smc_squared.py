@@ -155,7 +155,7 @@ def BMA_SMC2(
                 new_particles = Parallel(n_jobs=n_jobs)(delayed(PMH_kernel)(
                     model, model_data['name'], Z[m], model_data['current_theta'], model_data['state_history'], model_data['theta_names'],
                     observed_data.iloc[:t + 1], model_data['state_names'], initial_theta_info, num_state_particles, theta_mean,
-                    theta_covariance,  observation_distribution, resampling_method, m, t, pmmh_moves, c) for m in range(num_theta_particles))
+                    theta_covariance,  observation_distribution, resampling_method, m, t, pmmh_moves, c, n_jobs) for m in range(num_theta_particles))
         
                 # Update particles and states
                 model_data['current_theta'] = np.array([new['theta'] for new in new_particles])
