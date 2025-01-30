@@ -17,7 +17,6 @@ import seaborn as sns
 from scipy.stats import poisson, norm, nbinom
 from numpy.random import binomial, normal
 from joblib import Parallel, delayed  # For parallel computing
-from plotnine import *
 from tqdm import tqdm
 
 
