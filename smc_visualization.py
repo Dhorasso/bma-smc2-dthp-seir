@@ -11,31 +11,22 @@ def trace_smc(Traject):
     """
     Process the trajectories obtain from the SMC_squared in a matrix form
     """
-    
-
     matrix_dict = {}
     stateName=list(Traject[0].columns[1:])
     # Iterate through each state name
     for state in stateName:
       # Extract matrices for each state from all dataframes
       state_matrices = [df[state].values.reshape(1, -1) for df in Traject]
-    
       # Concatenate matrices horizontally
       combined_matrix = np.concatenate(state_matrices, axis=1)
-    
       # Reshape the combined matrix based on the shape of the original dataframe
       reshaped_matrix = combined_matrix.reshape(-1,Traject[0].shape[0])
-    
-      # Store the reshaped matrix in the dictionary with state name as the key
+          # Store the reshaped matrix in the dictionary with state name as the key
       matrix_dict[state] = reshaped_matrix 
-    
-    
     return matrix_dict
 
 
-
-
-def plot_smc(matrix, ax,  col_med='k', Date=None, window=1):
+def plot_smc(matrix, ax, separation_point, Date=None, window=1):
     """
     Plot the SMC^2 results using Matplotlib.
     
@@ -51,10 +42,10 @@ def plot_smc(matrix, ax,  col_med='k', Date=None, window=1):
     # Replace outliers in the matrix
     matrix = corrected_matrix(matrix)
     
-    # Calculate the median along the columns (axis=0)
+    # Calcupredthe median along the columns (axis=0)
     median_values = np.nanmedian(matrix, axis=0)
 
-    # Calculate the 95%, 90%, 75%, and 50% credible intervals
+    # Calcupredthe 95%, 90%, 75%, and 50% credible intervals
     credible_interval_95 = np.nanpercentile(matrix, [2.5, 97.5], axis=0)
     credible_interval_90 = np.nanpercentile(matrix, [5, 95], axis=0)
     credible_interval_75 = np.nanpercentile(matrix, [12.5, 85.5], axis=0)
@@ -69,51 +60,54 @@ def plot_smc(matrix, ax,  col_med='k', Date=None, window=1):
     # Define time steps as either numeric or date-based
     T = matrix.shape[1]
     if Date is not None:
-        time_steps = Date
+        time_steps = pd.to_datetime(Date)  # Ensure time_steps is in datetime format
     else:
         time_steps = np.arange(T)
+    condition = time_steps > separation_point
 
-    # Use a color map
-    blues = matplotlib.colormaps['Blues']
+    # Split data for the condition
+    time_steps_fitt = time_steps[~condition]
+    time_steps_pred= time_steps[condition]
 
-    # Plot credible intervals using fill_between with the Blues colormap
-    ax.fill_between(time_steps, credible_interval_95[0], credible_interval_95[1], color=blues(0.08), label='95% CrI')
-    ax.fill_between(time_steps, credible_interval_90[0], credible_interval_90[1], color=blues(0.25), label='90% CrI')
-    ax.fill_between(time_steps, credible_interval_75[0], credible_interval_75[1], color=blues(0.43), label='75% CrI')
-    ax.fill_between(time_steps, credible_interval_50[0], credible_interval_50[1], color=blues(0.75), label='50% CrI')
+    # Plot credible intervals with color changes
+    for ci, alpha, label in zip(
+        [credible_interval_95, credible_interval_90, credible_interval_75, credible_interval_50],
+        [0.08, 0.25, 0.43, 1],  # Transparency levels for the credible intervals
+        ['95% CrI', '90% CrI', '75% CrI', '50% CrI']  # Labels for intervals
+    ):
+        ax.fill_between(time_steps_fitt, ci[0][~condition], ci[1][~condition], color='steelblue', alpha=alpha)
+        ax.fill_between(time_steps_ped, ci[0][condition], ci[1][condition], color='mediumpurple', alpha=alpha)
 
-    # Plot the median line
-    ax.plot(time_steps, median_values, color=col_med, lw=2.5, label='Median')
+    # Plot the median line with dynamic color change
+    ax.plot(time_steps_fitt, median_values[~condition], color='midnightblue', lw=2)
+    ax.plot(time_steps_ped, median_values[condition], color='purple', lw=2)
 
-    # Add grid, legend, and ticks
-    
-    ax.grid(True, which='both', linestyle='-', linewidth=0.8)
-    
-    # Apply date formatting if Date is provided
+    # Add a vertical dashed line at the separation point
+    ax.axvline(separation_point, color='k', linestyle='--', lw=2)
+
+    # Configure x-axis formatting for dates with 3-month grid spacing
     if Date is not None:
-        ax.minorticks_on()
-        # Set major ticks at the start of each month and format them
-        ax.xaxis.set_major_locator(MonthLocator(interval=1))
-        ax.xaxis.set_major_formatter(DateFormatter('%b %y'))
-        ax.yaxis.set_minor_locator(AutoMinorLocator(2))
+        ax.xaxis.set_major_locator(MonthLocator(interval=3))  # Major ticks every 3 months
+        ax.xaxis.set_minor_locator(MonthLocator())  # Minor ticks every month
+        ax.xaxis.set_major_formatter(DateFormatter('%b %y'))  # Format: "Jan 22"
+       
+        ax.set_xlabel('Date', fontsize=18, fontweight='bold')
+    # Add grid and background color
+    ax.grid(True, linestyle='--', alpha=0.9)  # Add grid with dashed lines
+    ax.set_facecolor('whitesmoke')  # Add background color for the subplot
 
-        # Set minor ticks to the 15th of each month
-        ax.xaxis.set_minor_locator(DayLocator(bymonthday=16))  # Minor tick on 15th of each month
-        
-        # Set minor tick grid lines
-        ax.grid(True, which='minor', linestyle='--', linewidth=0.4)
+    # Add labels and legend
+   
 
-    # Add legend
-    # ax.legend(loc='upper left', bbox_to_anchor=(1.05, 1), frameon=False)
 
 
 def corrected_matrix(matrix):
-    # Calculate the IQR for each column
+    # Calcupredthe IQR for each column
     q1 = np.percentile(matrix, 25, axis=0)
     q3 = np.percentile(matrix, 75, axis=0)
     iqr = q3 - q1
     
-    # Calculate the lower and upper bounds for outliers
+    # Calcupredthe lower and upper bounds for outliers
     lower_bound = q1 - 1.5 * iqr
     upper_bound = q3 + 1.5 * iqr
     
