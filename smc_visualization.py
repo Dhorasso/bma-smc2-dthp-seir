@@ -26,7 +26,7 @@ def trace_smc(Traject):
     return matrix_dict
 
 
-def plot_smc(matrix, ax, separation_point, Date=None, window=1):
+def plot_smc(matrix, ax, separation_point=None, Date=None, window=1):
     """
     Plot the SMC^2 results using Matplotlib.
     
@@ -63,27 +63,36 @@ def plot_smc(matrix, ax, separation_point, Date=None, window=1):
         time_steps = pd.to_datetime(Date)  # Ensure time_steps is in datetime format
     else:
         time_steps = np.arange(T)
-    condition = time_steps > separation_point
-
-    # Split data for the condition
-    time_steps_fitt = time_steps[~condition]
-    time_steps_pred= time_steps[condition]
-
-    # Plot credible intervals with color changes
-    for ci, alpha, label in zip(
-        [credible_interval_95, credible_interval_90, credible_interval_75, credible_interval_50],
-        [0.08, 0.25, 0.43, 1],  # Transparency levels for the credible intervals
-        ['95% CrI', '90% CrI', '75% CrI', '50% CrI']  # Labels for intervals
-    ):
-        ax.fill_between(time_steps_fitt, ci[0][~condition], ci[1][~condition], color='steelblue', alpha=alpha)
-        ax.fill_between(time_steps_ped, ci[0][condition], ci[1][condition], color='mediumpurple', alpha=alpha)
-
-    # Plot the median line with dynamic color change
-    ax.plot(time_steps_fitt, median_values[~condition], color='midnightblue', lw=2)
-    ax.plot(time_steps_ped, median_values[condition], color='purple', lw=2)
-
-    # Add a vertical dashed line at the separation point
-    ax.axvline(separation_point, color='k', linestyle='--', lw=2)
+    if separation_point is not None:
+        condition = time_steps > separation_point
+        # Split data for the condition
+        time_steps_fitt = time_steps[~condition]
+        time_steps_pred= time_steps[condition]
+    
+        # Plot credible intervals with color changes
+        for ci, alpha, label in zip(
+            [credible_interval_95, credible_interval_90, credible_interval_75, credible_interval_50],
+            [0.08, 0.25, 0.43, 1],  # Transparency levels for the credible intervals
+            ['95% CrI', '90% CrI', '75% CrI', '50% CrI']  # Labels for intervals
+        ):
+            ax.fill_between(time_steps_fitt, ci[0][~condition], ci[1][~condition], color='steelblue', alpha=alpha)
+            ax.fill_between(time_steps_pred, ci[0][condition], ci[1][condition], color='mediumpurple', alpha=alpha)
+    
+        # Plot the median line with dynamic color change
+        ax.plot(time_steps_fitt, median_values[~condition], color='midnightblue', lw=2)
+        ax.plot(time_steps_pred, median_values[condition], color='purple', lw=2)
+    
+        # Add a vertical dashed line at the separation point
+        ax.axvline(separation_point, color='k', linestyle='--', lw=2)
+    else:
+        for ci, alpha, label in zip(
+            [credible_interval_95, credible_interval_90, credible_interval_75, credible_interval_50],
+            [0.08, 0.25, 0.43, 1],  # Transparency levels for the credible intervals
+            ['95% CrI', '90% CrI', '75% CrI', '50% CrI']  # Labels for intervals
+        ):
+            ax.fill_between(time_steps, ci[0], ci[1], color='steelblue', alpha=alpha)
+            # Plot the median line with dynamic color change
+            ax.plot(time_steps, median_values, color='midnightblue', lw=2)
 
     # Configure x-axis formatting for dates with 3-month grid spacing
     if Date is not None:
