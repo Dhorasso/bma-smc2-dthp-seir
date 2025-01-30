@@ -82,8 +82,7 @@ def PMMH_kernel(model, model_type, Z_current, current_theta_particles, state_his
                 observation_distribution, resampling_method, n_jobs=n_jobs
             )
 
-            Z_w_m_proposal=PF_results['incLogLike']
-            Z_proposal = np.sum(Z_w_m_proposal)
+            Z_proposal = PF_results['margLogLike']
             state_proposal = PF_results['particle_state']
             proposal = Z_proposal + log_prior_proposal
             
