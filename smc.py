@@ -12,7 +12,7 @@ from resampling import resampling_style
 from joblib import Parallel, delayed  
 
 
-def Parallele_Particle_Filter(
+def Particle_Filter(
     model, model_type, state_names, current_state_particles, 
     theta, theta_names, observed_data, num_state_particles,
     observation_distribution, resampling_method='stratified',
