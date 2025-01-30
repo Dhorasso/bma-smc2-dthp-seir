@@ -54,7 +54,7 @@ def PMMH_kernel(model, model_type, Z_current, current_theta_particles, state_his
     theta_covariance_current = c * theta_covariance_current + I
 
     state_current = state_history[t][m]
-    state_current_t_k = state_history[max(0, t - tw)][m]
+    state_current_t_k = state_history[0][m]
     theta_current = current_theta_particles[m]
 
     # Precompute log prior for the current theta
