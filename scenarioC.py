@@ -78,7 +78,7 @@ def solve_sir_var_beta(model, theta, InitialState, t_start, t_end, dt=1):
 # Initial conditions
 t = 0
 B = (np.exp(np.cos(2*np.pi*t/59)-t/90)) * 0.27
-true_theta = [1/6]  # true parameters
+true_theta = [1/6]  # true value of gamma
 InitialState = [500000-1, 1, 0, 0, B]
 t_start = 0
 t_end = 130
@@ -110,6 +110,8 @@ plt.tight_layout()
 # Show the plots
 plt.show()
 simulated_data
+
+
 
 
 #################################################################################################
