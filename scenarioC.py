@@ -11,6 +11,8 @@ import math
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+import matplotlib.patches as mpatches
+import matplotlib.lines as mlines
 import seaborn as sns
 from scipy.stats import poisson, norm, nbinom
 from numpy.random import binomial, normal
@@ -18,10 +20,11 @@ from joblib import Parallel, delayed  # For parallel computing
 from plotnine import *
 from tqdm import tqdm
 
+
 # SMC2 Libraries
 from models import stochastic_sir_model, dthp_model
 from smc_squared import BMA_SMC2
-from smc_visualization import trace_smc, plot_smc
+from smc_visualization import trace_smc, plot_smc, compute_model_average
 # Style Configuration
 plt.style.use('seaborn-v0_8-white')
 
@@ -84,7 +87,7 @@ dt = 1
 
 np.random.seed(123) # Set a seed for reproducibility
 simulated_data = solve_sir_var_beta(sir_var_beta, true_theta, InitialState, t_start, t_end, dt)
-
+simulated_data['Rt'] =simulated_data['B']/(1/6) # reproduction number
 fig, axes = plt.subplots(1, 2, figsize=(16, 5))
 
 # First subplot: Plot new infections
@@ -96,9 +99,9 @@ axes[0].grid(True)
 axes[0].set_title('New Infections Over Time')
 
 # Second subplot: Plot transmission rate
-axes[1].plot(simulated_data['time'].index, simulated_data['B'], label='Transmission Rate', color='orange')
+axes[1].plot(simulated_data['time'].index, simulated_data['Rt'], label='Reproduction nmber', color='orange')
 axes[1].set_xlabel('Time')
-axes[1].set_ylabel('Transmission Rate ')
+axes[1].set_ylabel('Reproduction nmber ')
 axes[1].legend()
 axes[1].grid(True)
 
@@ -188,6 +191,7 @@ smc2_results = BMA_SMC2(
 # You can plot the filtered estimate of the state and parametersx
 ############################################################################################################
 
+###  Evolution of the model weights
 w_dthp = M['weight_dthp']  
 w_seir = M['weight_seir']
 
@@ -212,67 +216,125 @@ fig.tight_layout()
 plt.show()
 
 
-
+###################################################################
 # state trajectory particles and extract corresponding matrix
 
-trajParticles_state = smc2_results['trajState']
+
+
+# Extract trajectories SIR model
+trajParticles_state_sir = smc2_results['traj_state_sir']
 matrix_dict_state = trace_smc(trajParticles_state)
-
-
-trajParticles_theta = smc2_results['trajtheta']
-matrix_dict_theta = trace_smc(trajParticles_theta)
-g=np.median(matrix_dict_theta['gamma'][:,-1])
-
+trajParticles_theta_sir = smc2_results['traj_theta_sir']
+matrix_dict_theta_sir = trace_smc(trajParticles_theta_sir)
+g=np.median(matrix_dict_theta_sir['gamma'][:,-1]
 # Calculate the  reproduction number Rt and add it to the satate dict
 matrix_dict_state['Rt']=matrix_dict_state['B']/g
 
+# Extract trajectories DTHP
+trajParticles_state_dthp = smc2_results['traj_state_dthp']
+matrix_dict_state = trace_smc(trajParticles_state)
+trajParticles_theta_dthp = smc2_results['traj_theta_dthp']
+matrix_dict_theta_dthp = trace_smc(trajParticles_theta_dthp)
 
-# simulated_data['Rt'] =simulated_data['Bt']/(1/7)
+# Compute trajectories model-averging based on the model weights
+matrix_dict_avg = compute_weighted_average(matrix_dict_dthp, matrix_dict_seir, w_dthp, w_seir)
 
-import matplotlib.pyplot as plt
 
-# Create a figure with a 2-row, 1-column subplot layout
-fig, axs = plt.subplots(1, 2, figsize=(16, 5))  # Adjusted figsize for two rows
+# Plot incidence and time-varying reproduction number for the 3 models
+fig, axs = plt.subplots(2, 3, figsize=(17, 10), sharex=True, sharey='row')
+# Titles for the subplots
+titles = ['DTHP', 'SIR', 'MA']
 
-# First subplot for 'NI', the number of new infected
-for (state, matrix) in matrix_dict_state.items():
-    if state == 'NI':
-        # Plot the SMC results in the first subplot
-        plot_smc(matrix, ax=axs[0])
-        # plot_smc2(matrix_dict_full[state], ax=axs[0])
+# Plot NI (top row)
+window = 1 ## increase if you want more smoothed plot
+separation_point = =len(simulated_data['time'])-fday
+for i, (method, matrix) in enumerate([
+    ('DTHP', matrix_dict_dthp['NI']),
+    ('SIR', matrix_dict_seir['NI']),
+    ('MA', matrix_dict_avg['NI'])
+]):
+    # Plot SMC results using a custom function
+    plot_smc(matrix, ax=axs[0, i], separation_point=separation_point,  window=window)
+    
+    # Add observed data for days 1 to `days`
+    axs[0, i].scatter(
+        simulated_data['time'][:days], 
+        simulated_data['obs'][:days].rolling(window=window, min_periods=1).mean(), 
+        facecolor='yellow', edgecolor='salmon', s=20, label='Observed Data (Fitted)', zorder=2
+    )
+    
+    # Add observed data for days > `days`
+    axs[0, i].scatter(
+        simulated_data['time'][days:], 
+        simulated_data['obs'][days:].rolling(window=window, min_periods=1).mean(), 
+        facecolor='orange', edgecolor='salmon', s=20, label='Observed Data (Forecast)', zorder=2
+    )
+    
+    # Add subplot title
+    axs[0, i].set_title(f'{titles[i]}', fontsize=20, fontweight='bold')
+    axs[0, i].axvline(x=separation_point, color='black', linestyle='--', linewidth=2, label=f'Separation (t={separation_point})')
+    
+    # Add Y-axis label for the first column
+    if i == 0:
+        axs[0, i].set_ylabel('Incidence', fontsize=18, fontweight='bold')
+    
+    # Customize tick parameters
+    axs[0, i].tick_params(axis='both', which='major', labelsize=16)
+    # axs[0, i].set_ylim([-10, 180])
 
-        # Plot observed data points (similar to geom_point)
-        axs[0].scatter(simulated_data['time'], simulated_data['obs'], color='darkorange', edgecolor='salmon', s=30, label='Observed Data')
+# Plot Rt (bottom row)
+for i, (method, matrix) in enumerate([
+    ('DTHP', matrix_dict_dthp['Rt']),
+    ('SIR', matrix_dict_seir['Rt']),
+    ('MA', matrix_dict_avg['Rt'])
+]):
+    # Plot SMC results
+    plot_smc(matrix, ax=axs[1, i],separation_point=separation_point,  window=window)
+    
+    # Plot true Rt curve
+    axs[1, i].plot(
+        simulated_data['time'], 
+        simulated_data['Rt'].rolling(window=window, min_periods=1).mean(), 
+        color='gold', lw=4, linestyle='--', label='True $R_t$', zorder=3
+    )
+    
+    # Add horizontal line for Rt = 1
+    axs[1, i].axhline(y=1, color='k', linestyle='--', linewidth=2, label=r'$R_t = 1$', zorder=1)
 
-        # Customize labels and axis for 'NI'
-        axs[0].set_xlabel('Time (days)', fontsize=18, fontweight='bold')
-        axs[0].set_ylabel('Daily new cases', fontsize=18, fontweight='bold')
-        
-        # Show legend and grid for 'NI'
-        axs[0].legend(loc='upper left', fontsize=14)
+    # Add Y-axis label for the first column
+    if i == 0:
+        axs[1, i].set_ylabel(r'Reproduction number $R_t$', fontsize=18, fontweight='bold')
+    
+    # Add X-axis label for the bottom row
+    axs[1, i].set_xlabel('Time (days)', fontsize=16, fontweight='bold')
+    axs[1, i].set_ylim([0, 6])
+    axs[1, i].tick_params(axis='both', which='major', labelsize=16)
+    axs[1, i].axvline(x=separation_point, color='black', linestyle='--', linewidth=2')
 
-# Second subplot for 'B', the transmission rate
-for (state, matrix) in matrix_dict_state.items():
-    if state == 'B':
-        # Plot the SMC results in the second subplot
-        plot_smc(matrix, ax=axs[1])
-        # plot_smc2(matrix_dict_full[state], ax=axs[1])
+# Adjust layout to prevent overlapping and add horizontal spacing
+# Create legend elements
+legend_elements = [
+    mpatches.Patch(facecolor='steelblue', label='Estimate'),        # Steelblue patch
+    mpatches.Patch(facecolor='mediumpurple', label='Forecast'),     # Mediumpurple patch
+    mlines.Line2D([], [], color='gold', lw=3, linestyle='--',label='True $R_t$'),  # Gold line for True Rt
+    mlines.Line2D([], [], marker='o', color='salmon', markerfacecolor='yellow', 
+                  markersize=10, linestyle='None', label='Observed Data (Fitted)'),  # Yellow dots with salmon edge
+    mlines.Line2D([], [], marker='o', color='salmon', markerfacecolor='orange', 
+                  markersize=10, linestyle='None', label='Observed Data (Forecast)')  # Orange dots with salmon edge
+]
+# Add legend below the plots
+fig.legend(
+    handles=legend_elements, loc='lower center', ncol=5, fontsize=20, frameon=False, bbox_to_anchor=(0.5, -0.02)
+)
+# Improve overall appearance: grid, tight layout, etc.
+for ax in axs.flat:
+    ax.grid(True, linestyle='--', alpha=0.9)  # Add grid with dashed lines
+    ax.set_facecolor('whitesmoke')  # Add background color for each subplot
+# Show the plot
+plt.tight_layout(rect=[0, 0.04, 1, 0.95])  # Adjust layout to leave space for the legend
+# plt.show()
+plt.subplots_adjust(wspace=0.05, hspace=0.1)
 
-        # Add a horizontal dashed line at y=1 (or the specific line related to 'B')
-        axs[1].plot(simulated_data['time'], simulated_data['B'], color='orange', linestyle='--', lw=4, label='Truth')
-
-        # Customize labels and axis for 'B'
-        axs[1].set_xlabel('Time (days)', fontsize=18, fontweight='bold')
-        axs[1].set_ylabel(r' $\beta_t$', fontsize=18, fontweight='bold')
-
-        # Show legend and grid for 'B'
-        axs[1].legend(loc='upper right', fontsize=14)
-
-# Adjust layout to prevent overlapping
-plt.tight_layout()
-
-# Show the entire figure with both subplots
-plt.show()
 
 
 #############################################################################
@@ -286,7 +348,7 @@ data_for_corner = []
 labels = []
 
 # Collect data and labels for each parameter
-for i, (state, matrix) in enumerate(matrix_dict_theta.items()):
+for i, (state, matrix) in enumerate(matrix_dict_theta_sir.items()):
     data = matrix[:, -1]  # Using the last column of each matrix
     data_for_corner.append(data)
     labels.append(L[i])
@@ -294,11 +356,11 @@ for i, (state, matrix) in enumerate(matrix_dict_theta.items()):
 data_for_corner = np.column_stack(data_for_corner)
 
 # Create a 3x3 subplot layout
-N=len(matrix_dict_theta) 
+N=len(matrix_dict_theta_sir) 
 fig, axs = plt.subplots(N-1, N, figsize=(18, 8))
 
 # Row 1: Plot time series using `plot_smc(matrix)` for each parameter
-for i, (state, matrix) in enumerate(matrix_dict_theta.items()):
+for i, (state, matrix) in enumerate(matrix_dict_theta_sir.items()):
     # plot_smc2(matrix_dict_full[state], ax=axs[0, i])
     plot_smc(matrix, ax=axs[0, i])  # Assuming plot_smc returns data suitable for plotting
     # axs[0, i].set_title(f'Time Series of {L[i]}', fontsize=14)
