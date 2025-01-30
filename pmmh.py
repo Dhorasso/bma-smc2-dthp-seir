@@ -1,7 +1,7 @@
 
 
 ########################################################################
-# This file contains the codes for the Particle Marginal Metropolis-Hasting (PMMH) kernel
+# This script contains the codes for the Particle Marginal Metropolis-Hasting (PMMH) kernel
 #  and the log prior distribution
 ############################################################################
 
@@ -24,7 +24,7 @@ def PMMH_kernel(model, model_type, Z_current, current_theta_particles, state_his
     Parameters:
     model: The model to be used.
     model_type (str) : Type of model ('dthp' or 'SIR').
-    Z_w (float): Current window of incremental log likelihood [t-tw, t] for each index m.
+    Z_current (float): marginal log likelihood for the data y_{1:t} for the index m.
     current_theta_particles (ndarray): Current particles for the theta parameters.
     state_history (list): The history of the states over time.
     theta_names (list): Names of the theta parameters.
