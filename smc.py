@@ -16,7 +16,7 @@ def Particle_Filter(
     model, model_type, state_names, current_state_particles, 
     theta, theta_names, observed_data, num_state_particles,
     observation_distribution, resampling_method='stratified',
-    add=0, end=False, forecast_days=0, time=0
+    add=0, end=False, forecast_days=0, time=0, n_jobs=10
 ):
     """
     Perform Particle Filtering for either the DTHP or SIR model to estimate state evolution
