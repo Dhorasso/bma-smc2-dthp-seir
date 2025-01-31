@@ -27,7 +27,7 @@ To install and set up the environment for running this model, follow these steps
 
 - [pmmh.py](https://github.com/Dhorasso/bma-smc2-dthp-sir/blob/main/pmmh.py) Implements the **Particle Marginal Metropolis-Hastings (PMMH)** algorithm for Bayesian inference.
 
-- [smc_squared.py](https://github.com/Dhorasso/bma-smc2-dthp-sir/blob/main/smc_squared.py)  Contains the **main code for Bayesian Model Averaging (BMA)** using the **SMC² (Sequential Monte Carlo Squared) algorithm**.
+- [smc_squared.py](https://github.com/Dhorasso/bma-smc2-dthp-sir/blob/main/smc_squared.py)  Contains the **main code for Bayesian Model Averaging (BMA)** using the **SMC^2 algorithm**.
  
 
 ## Example Usage
