@@ -88,8 +88,7 @@ def dthp_model(state, theta, state_names, theta_names, observed_data, t):
 
     Returns:
     - updated_state: DataFrame of updated state variables with state names as columns
-    """d
-
+    """
     # Unpack state variables
     lm_I, C_I, Rt = state.T.copy()  # Ensure state variables are writable
 
