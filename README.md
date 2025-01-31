@@ -17,4 +17,6 @@ To install and set up the environment for running this model, follow these steps
     pip install -r requirements.txt
     ```
 
-## Model Inputs
+## Example Usage
+
+The file [Test_bma_smc2](https://github.com/Dhorasso/bma-smc2-dthp-sir/blob/main/Test_bma_smc2) containt the code recreate the analyses conducted in the paper.
