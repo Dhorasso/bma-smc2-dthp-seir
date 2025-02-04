@@ -26,7 +26,7 @@ To install and set up the environment for running this model, follow these steps
 
 - [smc.py](https://github.com/Dhorasso/bma-smc2-dthp-sir/blob/main/smc.py) Implements the **Bootstrap Particle Filter**, which runs in parallel for the **DTHP and SIR models**.
 
-- [pmmh.py](https://github.com/Dhorasso/bma-smc2-dthp-sir/blob/main/pmmh.py) Implements the **Particle Marginal Metropolis-Hastings (PMMH)** algorithm for Bayesian inference.
+- [pmmh.py](https://github.com/Dhorasso/bma-smc2-dthp-sir/blob/main/pmmh.py) Implements the **Particle Marginal Metropolis-Hastings (PMMH)** algorithm for Bayesian parameter inference.
 
 - [smc_squared.py](https://github.com/Dhorasso/bma-smc2-dthp-sir/blob/main/smc_squared.py)  Contains the **main code for Bayesian Model Averaging (BMA)** using the **SMC^2 algorithm**.
  
