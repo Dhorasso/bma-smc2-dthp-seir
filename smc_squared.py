@@ -133,12 +133,10 @@ def BMA_SMC2(
             Z_arr[:, t] = np.log(likelihood_increment)
             Z = np.sum(Z_arr[:, :t + 1], axis=1)
             
-            if t > 0:
-                theta_weights[:, t] = theta_weights[:, t-1] * likelihood_increment
-                model_evid[t] = Evidence(theta_weights[:, t-1], likelihood_increment)
-            else:
-                theta_weights[:, t] = theta_weights[:, t] * likelihood_increment
-                model_evid[t] = Evidence(theta_weights[:, t], likelihood_increment)
+  
+            theta_weights[:, t] = theta_weights[:, max(0,t-1)] * likelihood_increment
+            model_evid[t] = Evidence(theta_weights[:, max(0,t-1)], likelihood_increment)
+
             
             theta_weights[:, t] /= np.sum(theta_weights[:, t])
             ESS_theta[t] = 1 / np.sum(theta_weights[:, t] ** 2)
