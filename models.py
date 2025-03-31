@@ -179,7 +179,7 @@ def dthp_model(state, theta, state_names, theta_names, observed_data, t, N):
     lm_I = np.random.poisson((1 - C_I / N) * Rt * lm_I , size=lm_I.shape)
     
     # Update cumulative infections
-    C_I += lm_I
+    C_I += lm_I  # This the estimate or you can use actual value C_I += observed_data['obs'].iloc[t-1]
     # Stack updated variables
     updated_state = np.column_stack((lm_I, C_I, Rt))
     # Return updated state as DataFrame
