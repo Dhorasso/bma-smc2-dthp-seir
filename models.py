@@ -1,5 +1,5 @@
 ###########################################################################
-#  This file contains the code for different (SIR, SIRS and DTHP)
+#  This file contains the code for different (SEIR, SEIRS and DTHP)
 #######################################################################
 
 import pandas as pd
@@ -8,135 +8,125 @@ from numpy.random import binomial, normal
 
 
 ######################################################################################################
-#####  SIR model with time-varying Beta as a geometric random walk #################################
+#####  SEIR model with time-varying Beta as a geometric random walk #################################
 
-def stochastic_sir_model(y, theta, theta_names, dt=1):
+def stochastic_seir_model(y, theta, theta_names, dt=1):
     """
-    Vectorized discrete-time stochastic SIR compartmental model with time-varying Beta.
+    Vectorized discrete-time stochastic SEIR model with time-varying Beta (transmission rate).
     
     Parameters:
     ----------
     y : np.ndarray
-        A 2D array of compartments with shape (num_particles, num_compartments). 
-        Columns represent the following compartments:
-        [S (Susceptible), I (Infected), R (Removed), 
-         NI (new infected), B (Transmission Rate)].
+        A 2D array with shape (num_particles, num_compartments). Columns:
+        [S, E, I, R, NI, B]
     theta : np.ndarray
-        A 1D array of parameter values, one per particle. The parameters must match the order in `theta_names`.
+        A 1D array of parameter values for each particle.
     theta_names : list of str
-        List of parameter names, matching the order in `theta`.
-    dt : float, optional
-        Time step for discrete updates (default is 1).
+        List of parameter names matching the order in `theta`.
+    dt : float
+        Time step size.
 
     Returns:
     -------
     np.ndarray
-        Updated 2D array of compartments with the same shape as input `y`.
+        Updated compartment array with same shape as input `y`.
     """
+    # Unpack compartments
+    S, E, I, R, NI, B = y.T
+    N = S + E + I + R
 
-    # Unpack compartments (columns of y)
-    S, I, R, NI, B = y.T
-
-    # Calculate total population for each particle
-    N = S + I + R
-
-    # Unpack parameters into a dictionary for easy access
+    # Parameters
     param = dict(zip(theta_names, theta))
-    gamma = param['gamma']  # Recovery rate
-    nu_beta = param.get('nu_beta', 0.1)  # Default value for `nu_beta` if not specified
+    gamma = param['gamma']       # Recovery rate
+    sigma = param['sigma']       # Incubation rate (E → I)
+    nu_beta = param['nu_beta']   # Volatility in transmission rate
 
-    # Transition probabilities (vectorized)
-    P_SI = 1 - np.exp(-B * I / N * dt)  # Susceptible → Infected
-    P_IR = 1 - np.exp(-gamma * dt)      # Infected → Removed
+    # Transition probabilities
+    P_SI = 1 - np.exp(-B * I / N * dt)    # S → E
+    P_EI = 1 - np.exp(-sigma * dt)        # E → I
+    P_IR = 1 - np.exp(-gamma * dt)        # I → R
 
-    # Simulate transitions using binomial draws
-    Y_SI = binomial(S.astype(int), P_SI)  # S → I
-    Y_IR = binomial(I.astype(int), P_IR)  # I → R
+    # Binomial transitions
+    Y_SE = np.random.binomial(S.astype(int), P_SI)
+    Y_EI = np.random.binomial(E.astype(int), P_EI)
+    Y_IR = np.random.binomial(I.astype(int), P_IR)
 
     # Update compartments
-    S_next = S - Y_SI
-    I_next = I + Y_SI - Y_IR
+    S_next = S - Y_SE
+    E_next = E + Y_SE - Y_EI
+    I_next = I + Y_EI - Y_IR
     R_next = R + Y_IR
-    
-    # Update transmission rate with stochastic volatility
-    B_next = B * np.exp(nu_beta * normal(0, 1, size=B.shape) * dt)
 
-    # Update new infected
-    NI_next = Y_SI
+    # Update β with geometric random walk
+    B_next = B * np.exp(nu_beta * np.random.normal(0, 1, size=B.shape) * dt)
 
-    # Combine updated compartments into a 2D array
-    y_next = np.column_stack((S_next, I_next, R_next, NI_next, B_next))
-    
-    # Ensure all compartments remain non-negative
+    # New infections = S → E
+    NI_next = Y_EI
+
+    y_next = np.column_stack((S_next, E_next, I_next, R_next, NI_next, B_next))
     return np.maximum(y_next, 0)
 
 
+
 ######################################################################################################
-#####  SIR model with time-varying Beta as a geometric random walk #################################
+#####  SEIR model with time-varying Beta as a geometric random walk #################################
 
-def stochastic_sirs_model(y, theta, theta_names, dt=1):
+def stochastic_seirs_model(y, theta, theta_names, dt=1):
     """
-   Vectorized discrete-time stochastic SIRS compartmental model with time-varying Beta
+    Vectorized discrete-time stochastic SEIRS model with time-varying Beta.
 
-    Parameters
+    Parameters:
     ----------
     y : np.ndarray
-        A 2D array of compartments with shape (num_particles, num_compartments).
-        Columns represent:
-        [S (Susceptible), I (Infected), R (Recovered), NI (New Infections), B (Transmission Rate)].
+        A 2D array of compartments:
+        [S, E, I, R, NI, B]
     theta : np.ndarray
-        A 1D array of parameter values for all particles, matching the order in `theta_names`.
+        Parameter values per particle.
     theta_names : list of str
-        List of parameter names corresponding to `theta`.
-    dt : float, optional
-        Time step for discrete updates (default is 1, measured in days).
+        Parameter names.
+    dt : float
+        Time step.
 
-    Returns
+    Returns:
     -------
     np.ndarray
-        Updated 2D array of compartments with the same shape as `y`.
+        Updated compartments.
     """
-
     # Unpack compartments
-    S, I, R, NI, B = y.T
+    S, E, I, R, NI, B = y.T
+    N = S + E + I + R
 
-    # Total population per particle
-    N = S + I + R
-
-    # Unpack parameters into a dictionary for easier access
+    # Parameters
     param = dict(zip(theta_names, theta))
-    gamma = param['gamma']         # Recovery rate
-    alpha = param.get('alpha', 0)  #  Rate of immunity loss
-    nu_beta = param['nu_beta']     # Volatility in transmission rate
+    gamma = param['gamma']       # I → R
+    sigma = param['sigma']       # E → I
+    alpha = param['alpha']       # R → S (waning immunity)
+    nu_beta = param['nu_beta']   # volatility
 
-    # Natural birth/death rate (assumes an 80-year lifespan)
-    mu = 1 / (80 * 52)
+    mu = 1 / (80 * 52)  # optional natural death/birth rate (approx weekly)
 
     # Transition probabilities
-    P_SI = 1 - np.exp(-B * I / N * dt)  # Probability of S → I
-    P_IR = 1 - np.exp(-gamma * dt)      # Probability of I → R
-    P_RS = 1 - np.exp(-alpha * dt)      # Probability of R → S (optional)
+    P_SE = 1 - np.exp(-B * I / N * dt)
+    P_EI = 1 - np.exp(-sigma * dt)
+    P_IR = 1 - np.exp(-gamma * dt)
+    P_RS = 1 - np.exp(-alpha * dt)
 
-    # Simulate transitions using binomial draws
-    Y_SI = np.random.binomial(S.astype(int), P_SI)
+    # Binomial transitions
+    Y_SE = np.random.binomial(S.astype(int), P_SE)
+    Y_EI = np.random.binomial(E.astype(int), P_EI)
     Y_IR = np.random.binomial(I.astype(int), P_IR)
     Y_RS = np.random.binomial(R.astype(int), P_RS)
 
-    # Update compartments
-    S_next = S - Y_SI + mu * (N - S) * dt + Y_RS  # Births replenish S
-    I_next = I + Y_SI - Y_IR - mu * I * dt        # Deaths reduce I
-    R_next = R + Y_IR - mu * R * dt - Y_RS        # Deaths reduce R
+    # Compartment updates with optional demographics
+    S_next = S - Y_SE + Y_RS + mu * (N - S) * dt
+    E_next = E + Y_SE - Y_EI - mu * E * dt
+    I_next = I + Y_EI - Y_IR - mu * I * dt
+    R_next = R + Y_IR - Y_RS - mu * R * dt
 
-    # Update transmission rate with stochastic volatility
     B_next = B * np.exp(nu_beta * np.random.normal(0, 1, size=B.shape) * dt)
+    NI_next = Y_EI
 
-    # Track new infections
-    NI_next = Y_SI
-
-    # Combine updated compartments into a 2D array
-    y_next = np.column_stack((S_next, I_next, R_next, NI_next, B_next))
-
-    # Ensure all compartments remain non-negative
+    y_next = np.column_stack((S_next, E_next, I_next, R_next, NI_next, B_next))
     return np.maximum(y_next, 0)
 
 
@@ -157,31 +147,37 @@ def dthp_model(state, theta, state_names, theta_names, observed_data, t, N):
     - t: Current time step (scalar)
     - N : Total population size
 
-
     Returns:
     - updated_state: DataFrame of updated state variables with state names as columns
     """
 
     # Unpack state variables
-    lm_I, C_I, Rt = state.T.copy()  # Ensure state variables are writable
+    lm_I, Rt = state.T.copy()  # Ensure state variables are writable
+
     # Create parameter dictionary
-    param = dict(zip(theta_names, theta))  # Transpose theta for particle-wise parameter handling
-    omega_I = param['omega_I']  # Infection kernel decay parameter
-    nu_beta = param.get('nu_beta', 0.1)  # Noise parameter for Rt
+    param = dict(zip(theta_names, theta))
+    omega_I = param['omega_I']
+    nu_beta = param.get('nu_beta', 0.1)
 
     # Reset lambdas
-    lm_I.fill(0)  
+    lm_I.fill(0)
+
+    # Update Rt with log-normal noise
     Rt *= np.exp(nu_beta * np.random.normal(0, 1, size=Rt.shape))
-    for ti in range(t):
-        kernel_values = omega_I * (1 - omega_I) ** (t - ti - 1)
-        lm_I += observed_data['obs'].iloc[ti] * kernel_values  # Broadcasting for all particles
-    # Adjust lambda with  cumulative infections
-    lm_I = np.random.poisson((1 - C_I / N) * Rt * lm_I , size=lm_I.shape)
     
-    # Update cumulative infections
-    C_I += lm_I  # This the estimate or you can use actual value C_I += observed_data['obs'].iloc[t-1]
-    # Stack updated variables
-    updated_state = np.column_stack((lm_I, C_I, Rt))
-    # Return updated state as DataFrame
+    # Compute lambda using past observed infections
+    for ti in range(t): # it sport at t-1#
+        kernel_values = omega_I * (1 - omega_I) ** (t - ti - 1)
+        # ti=min(ti, len(observed_data)-1)
+        lm_I += observed_data['obs'].iloc[ti] * kernel_values
+
+    cum_obs = observed_data['obs'].iloc[:max(1,t-1)].sum()
+
+    lm_I *= (1 - cum_obs / N)* Rt 
+    # new_infections = np.random.poisson(mean_infections)
+
+    # Update state
+    updated_state = np.column_stack((lm_I, Rt))
     return pd.DataFrame(updated_state, columns=state_names)
+
 
