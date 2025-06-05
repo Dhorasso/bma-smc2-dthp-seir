@@ -1,7 +1,7 @@
 # Particle Filter Implementation
 # ================================
 # This script implements a parallele Particle Filter for state estimation 
-# and marginal log-likelihood computation in the DTHP andd SIR model.
+# and marginal log-likelihood computation in the DTHP andd SEIR model.
 
 
 import numpy as np
@@ -19,12 +19,12 @@ def Particle_Filter(
     N=5e5, add=0, end=False, forecast_days=0, time=0, n_jobs=10
 ):
     """
-    Perform Particle Filtering for either the DTHP or SIR model to estimate state evolution
+    Perform Particle Filtering for either the DTHP or SEIR model to estimate state evolution
     and compute the marginal log-likelihood.
 
    Parameters:
     - model (func): The model function.
-    - model_type (str) : Type of model ('dthp' or 'SIR').
+    - model_type (str) : Type of model ('dthp' or 'SEIR').
     - state_names (list): Names of the state variables.
     - current_state_particles (ndarray): The initial state particles.
     - theta (ndarray): Model parameters.
@@ -63,10 +63,10 @@ def Particle_Filter(
         
         if model_type == 'dthp':
             trajectories = model(current_state_particles, theta, state_names, theta_names, data_app, t, N)
-        elif model_type == 'sir':
+        elif model_type == 'seir':
             trajectories = state_transition(model, theta, current_state_particles, state_names, theta_names, t_start, t_end)
         else:
-            raise ValueError("Unknown model type. Use 'dthp' or 'sir'.")
+            raise ValueError("Unknown model type. Use 'dthp' or 'seir'.")
         
         model_points = trajectories.to_numpy()
         
