@@ -13,20 +13,20 @@ from resampling import resampling_style
 
 
 def BMA_SMC2(
-    model_dthp, model_sir, initial_state_info_dthp, initial_theta_info_dthp,
-    initial_state_info_sir, initial_theta_info_sir, observed_data, num_state_particles,
+    model_dthp, model_seir, initial_state_info_dthp, initial_theta_info_dthp,
+    initial_state_info_seir, initial_theta_info_seir, observed_data, num_state_particles,
     num_theta_particles, observation_distribution, resampling_threshold=0.5,
     resampling_method='stratified', tw=1, pmmh_moves=5, c=0.5, n_jobs=10, 
     forecast_days=0, N=5e5,  show_progress=True
 ):
     """
-    Perform Sequential Monte Carlo squared (SMC^2) for two models (dthp and sir), estimating the state and 
+    Perform Sequential Monte Carlo squared (SMC^2) for two models (dthp and seir), estimating the state and 
     parameters using a particle filter approach, compute the posterior model probability
 
     Parameters:
-    - model_dthp, model_sir: stochatic model.
+    - model_dthp, model_seir: stochatic model.
     - initial_state_info_dthp, initial_theta_info_dthp: Initialization for the dthp model.
-    - initial_state_info_sir, initial_theta_info_sir: Initialization for the sir model.
+    - initial_state_info_seir, initial_theta_info_seir: Initialization for the seir model.
     - observed_data: Data to fit the model to.
     - num_state_particles, num_theta_particles: Number of state and theta particles.
     - resampling_threshold: Effective sample size threshold for resampling.
@@ -46,13 +46,13 @@ def BMA_SMC2(
     num_timesteps = len(observed_data)
     
     # Initialize arrays to store results
-    Z_arr_dthp, Z_arr_sir = np.zeros((num_theta_particles, num_timesteps)), np.zeros((num_theta_particles, num_timesteps))
-    Z_dthp, Z_sir = np.zeros(num_theta_particles), np.zeros(num_theta_particles)
-    model_evid_dthp, model_evid_sir = np.zeros(num_timesteps), np.zeros(num_timesteps)
-    likelihood_increment_dthp, likelihood_increment_sir = np.ones(num_theta_particles), np.ones(num_theta_particles)
+    Z_arr_dthp, Z_arr_seir = np.zeros((num_theta_particles, num_timesteps)), np.zeros((num_theta_particles, num_timesteps))
+    Z_dthp, Z_seir = np.zeros(num_theta_particles), np.zeros(num_theta_particles)
+    model_evid_dthp, model_evid_seir = np.zeros(num_timesteps), np.zeros(num_timesteps)
+    likelihood_increment_dthp, likelihood_increment_seir = np.ones(num_theta_particles), np.ones(num_theta_particles)
     theta_weights_dthp = np.ones((num_theta_particles, num_timesteps)) / num_theta_particles
-    theta_weights_sir = theta_weights_dthp.copy()
-    ESS_theta_dthp, ESS_theta_sir = np.zeros(num_timesteps), np.zeros(num_timesteps)
+    theta_weights_seir = theta_weights_dthp.copy()
+    ESS_theta_dthp, ESS_theta_seir = np.zeros(num_timesteps), np.zeros(num_timesteps)
 
     # Initialize state and theta particles for both models
     def initialize_particles(model_type, initial_state_info, initial_theta_info):
@@ -68,14 +68,14 @@ def BMA_SMC2(
         }
     
     dthp_data = initialize_particles('dthp', initial_state_info_dthp, initial_theta_info_dthp)
-    sir_data = initialize_particles('sir', initial_state_info_sir, initial_theta_info_sir)
+    seir_data = initialize_particles('seir', initial_state_info_seir, initial_theta_info_seir)
 
     # Initialize trajectory storage for both models
     traj_theta_dthp = [{key: [] for key in ['time'] + dthp_data['theta_names']} for _ in range(num_theta_particles)]
-    traj_theta_sir = [{key: [] for key in ['time'] + sir_data['theta_names']} for _ in range(num_theta_particles)]
+    traj_theta_seir = [{key: [] for key in ['time'] + seir_data['theta_names']} for _ in range(num_theta_particles)]
 
     traj_state_dthp ={}
-    traj_state_sir ={}
+    traj_state_seir ={}
     # Initialize progress bar
     if show_progress:
         progress_bar = tqdm(total=num_timesteps, desc="BMA-SMC^2 Progress")
@@ -85,16 +85,16 @@ def BMA_SMC2(
         t_start, t_end = (0, 0) if t == 0 else (t - 1, t)
         
         def process_particle(model_type, theta_idx):
-            model_data = dthp_data if model_type == 'dthp' else sir_data
+            model_data = dthp_data if model_type == 'dthp' else seir_data
             trans_theta = model_data['current_theta'][theta_idx]
-            theta = untransform_theta(trans_theta, initial_theta_info_dthp if model_type == 'dthp' else initial_theta_info_sir)
+            theta = untransform_theta(trans_theta, initial_theta_info_dthp if model_type == 'dthp' else initial_theta_info_seir)
             state_particles = model_data['current_state'][theta_idx]
             
             if model_type == 'dthp':
                 trajectories = model_dthp(state_particles, theta, model_data['state_names'],
                                           model_data['theta_names'], observed_data, t, N)
             else:
-                trajectories = state_transition(model_sir, theta, state_particles, model_data['state_names'], 
+                trajectories = state_transition(model_seir, theta, state_particles, model_data['state_names'], 
                                                 model_data['theta_names'], t_start, t_end)
             model_points = trajectories.to_numpy()
             
@@ -115,7 +115,7 @@ def BMA_SMC2(
             }
         
         particles_dthp = Parallel(n_jobs=n_jobs)(delayed(process_particle)('dthp', m) for m in range(num_theta_particles))
-        particles_sir = Parallel(n_jobs=n_jobs)(delayed(process_particle)('sir', m) for m in range(num_theta_particles))
+        particles_seir = Parallel(n_jobs=n_jobs)(delayed(process_particle)('seir', m) for m in range(num_theta_particles))
         
         # Update state and theta particles
         for model_data, model, initial_state_info, initial_theta_info, theta_weights, Z,  traj_theta, particles,\
@@ -123,8 +123,8 @@ def BMA_SMC2(
             (dthp_data, model_dthp, initial_state_info_dthp, initial_theta_info_dthp, theta_weights_dthp, Z_dthp, \
              traj_theta_dthp, particles_dthp, likelihood_increment_dthp, Z_arr_dthp, model_evid_dthp, 
              ESS_theta_dthp, traj_state_dthp),
-            (sir_data, model_sir, initial_state_info_sir, initial_theta_info_sir, theta_weights_sir, Z_sir, traj_theta_sir,\
-             particles_sir, likelihood_increment_sir, Z_arr_sir, model_evid_sir, ESS_theta_sir, traj_state_sir)
+            (seir_data, model_seir, initial_state_info_seir, initial_theta_info_seir, theta_weights_seir, Z_seir, traj_theta_seir,\
+             particles_seir, likelihood_increment_seir, Z_arr_seir, model_evid_seir, ESS_theta_seir, traj_state_seir)
         ]:
             model_data['current_state'] = np.array([p['state_particles'] for p in particles])
             model_data['current_theta'] = np.array([p['theta'] for p in particles])
@@ -179,7 +179,7 @@ def BMA_SMC2(
             if model_data['name']=='dthp':
                 traj_theta_dthp = traj_theta
             else: 
-                traj_theta_sir = traj_theta
+                traj_theta_seir = traj_theta
     
             # Final particle filter step for the last time step (forecasting)
             if t == num_timesteps - 1:
@@ -197,7 +197,7 @@ def BMA_SMC2(
                 if model_data['name']=='dthp':
                     traj_state_dthp = traj_state
                 else: 
-                    traj_state_sir = traj_state
+                    traj_state_seir = traj_state
         
                 # Update progress bar
         if show_progress:
@@ -212,26 +212,26 @@ def BMA_SMC2(
     
     # Calculate the evidence for both models
     EV_dthp = prod_window(model_evid_dthp, window_size=tw)
-    EV_sir = prod_window(model_evid_sir, window_size=tw)
+    EV_seir = prod_window(model_evid_seir, window_size=tw)
     
     # Calculate the weights for the models
-    W_dthp = EV_dthp / (EV_dthp + EV_sir)
+    W_dthp = EV_dthp / (EV_dthp + EV_seir)
     # Extend weights if forecast
     W_dthp = extend_array(W_dthp, num_timesteps + forecast_days)
-    W_sir = 1 - W_dthp
+    W_seir = 1 - W_dthp
     
 
     
     # Return the results from both models
     return {
         'weight_dthp': W_dthp,
-        'weight_sir': W_sir,
+        'weight_seir': W_seir,
         'traj_theta_dthp': traj_theta_dthp,
-        'traj_theta_sir': traj_theta_sir,
+        'traj_theta_seir': traj_theta_seir,
         'traj_state_dthp': traj_state_dthp,
-        'traj_state_sir': traj_state_sir,
+        'traj_state_seir': traj_state_seir,
         'ESS_theta_dthp': ESS_theta_dthp,
-        'ESS_theta_sir': ESS_theta_sir,
+        'ESS_theta_seir': ESS_theta_seir,
     }
 
 
