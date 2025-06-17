@@ -50,18 +50,16 @@ def stochastic_seir_model(y, theta, theta_names, dt=1):
     Y_SE = np.random.binomial(S.astype(int), P_SI)
     Y_EI = np.random.binomial(E.astype(int), P_EI)
     Y_IR = np.random.binomial(I.astype(int), P_IR)
-
     # Update compartments
     S_next = S - Y_SE
     E_next = E + Y_SE - Y_EI
     I_next = I + Y_EI - Y_IR
     R_next = R + Y_IR
+    # New infected = E→ I
+    NI_next = Y_EI
 
     # Update β with geometric random walk
     B_next = B * np.exp(nu_beta * np.random.normal(0, 1, size=B.shape) * dt)
-
-    # New infections = S → E
-    NI_next = Y_EI
 
     y_next = np.column_stack((S_next, E_next, I_next, R_next, NI_next, B_next))
     y_next[:, :5] = np.maximum(y_next[:, :5], 0)
@@ -123,9 +121,9 @@ def stochastic_seirs_model(y, theta, theta_names, dt=1):
     E_next = E + Y_SE - Y_EI - mu * E * dt
     I_next = I + Y_EI - Y_IR - mu * I * dt
     R_next = R + Y_IR - Y_RS - mu * R * dt
+    NI_next = Y_EI
 
     B_next = B * np.exp(nu_beta * np.random.normal(0, 1, size=B.shape) * dt)
-    NI_next = Y_EI
 
     y_next = np.column_stack((S_next, E_next, I_next, R_next, NI_next, B_next))
     y_next[:, :5] = np.maximum(y_next[:, :5], 0)
