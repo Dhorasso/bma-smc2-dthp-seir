@@ -64,7 +64,8 @@ def stochastic_seir_model(y, theta, theta_names, dt=1):
     NI_next = Y_EI
 
     y_next = np.column_stack((S_next, E_next, I_next, R_next, NI_next, B_next))
-    return np.maximum(y_next, 0)
+    y_next[:, :5] = np.maximum(y_next[:, :5], 0)
+    return y_next
 
 
 
@@ -127,7 +128,8 @@ def stochastic_seirs_model(y, theta, theta_names, dt=1):
     NI_next = Y_EI
 
     y_next = np.column_stack((S_next, E_next, I_next, R_next, NI_next, B_next))
-    return np.maximum(y_next, 0)
+    y_next[:, :5] = np.maximum(y_next[:, :5], 0)
+    return y_next
 
 
 
