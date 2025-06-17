@@ -105,23 +105,24 @@ def draw_value(lower, upper, mean, std, distribution, transform=None):
 ###### Functions to draw initial state an prameter particles #####################
 
         
-def initial_one_state(state_info, num_state_particles):
+def initial_one_state(initial_state_info, num_state_particles):
     """
     Initialize state particles for the particle filter.
 
     Parameters:
-    - state_info (dict): Dictionary containing information about initial state distributions.
+    - initial_state_info (dict): Dictionary containing information about initial state distributions.
     - num_state_particles (int): Number of state particles to initialize.
 
     Returns:
     - result_dict (dict): Dictionary containing initialized state particles and state names.
     """
-    state_names = list(state_info.keys())
+    state_names = list(initial_state_info.keys())
     current_state_particles = np.zeros((num_state_particles, len(state_names)))
     
     # Generate state particles based on their prior distributions
     for i in range(num_state_particles):
-        state_values = [draw_value(*state_info[state]['prior']) for state in state_names]
+        state_values = [draw_value(*initial_state_info[state]['prior']) for state in state_names]
+        state_values = transform_theta(state_values, initial_state_info)
         current_state_particles[i] = state_values
    
     result_dict = {
@@ -134,25 +135,26 @@ def initial_one_state(state_info, num_state_particles):
 
 
 
-def initial_state(state_info, num_theta_particles, num_state_particles):
+def initial_state(initial_state_info, num_theta_particles, num_state_particles):
     """
     Initialize state particles for each theta particle in the particle filter.
 
     Parameters:
-    - state_info (dict): Dictionary containing information about initial state distributions.
+    - initial_state_info (dict): Dictionary containing information about initial state distributions.
     - num_theta_particles (int): Number of theta particles to initialize.
     - num_state_particles (int): Number of state particles to initialize for each theta.
 
     Returns:
     - result_dict (dict): Dictionary containing initialized state particles and state names for each theta.
     """
-    state_names = list(state_info.keys())
+    state_names = list(initial_state_info.keys())
     current_state_particles_all = np.zeros((num_theta_particles, num_state_particles, len(state_names)))
 
     # Generate state particles for each theta particle
     for j in range(num_theta_particles):
         for i in range(num_state_particles):
-            state_values = [draw_value(*state_info[state]['prior']) for state in state_names]
+            state_values = [draw_value(*initial_state_info[state]['prior']) for state in state_names]
+            state_values = transform_theta(state_values, initial_state_info)
             current_state_particles_all[j, i, :] = state_values
 
     result_dict = {
