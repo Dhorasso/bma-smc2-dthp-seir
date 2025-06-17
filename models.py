@@ -62,6 +62,7 @@ def stochastic_seir_model(y, theta, theta_names, dt=1):
     B_next = B * np.exp(nu_beta * np.random.normal(0, 1, size=B.shape) * dt)
 
     y_next = np.column_stack((S_next, E_next, I_next, R_next, NI_next, B_next))
+    # Ensure all compartments remain non-negative
     y_next[:, :5] = np.maximum(y_next[:, :5], 0)
     return y_next
 
@@ -126,6 +127,7 @@ def stochastic_seirs_model(y, theta, theta_names, dt=1):
     B_next = B * np.exp(nu_beta * np.random.normal(0, 1, size=B.shape) * dt)
 
     y_next = np.column_stack((S_next, E_next, I_next, R_next, NI_next, B_next))
+    # Ensure all compartments remain non-negative
     y_next[:, :5] = np.maximum(y_next[:, :5], 0)
     return y_next
 
