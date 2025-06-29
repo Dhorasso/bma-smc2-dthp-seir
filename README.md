@@ -1,7 +1,8 @@
 ## Bayesian Model Averaging using SMC^2
 
 This repository contains the implementation code of the paper **"A sequential ensemble approach to epidemic modeling: Combining Hawkes and SEIR models using SMC^2"**.
-The project introduces a novel framework that combines discrete-time Hawkes processes (DTHP) and Susceptible-Exposed-Infectious-Removed (SEIR) models for improved epidemic tracking and forecasting.
+The project introduces a novel framework that combines discrete-time Hawkes processes (DTHP) and Susceptible-Exposed-Infectious-Removed (SEIR) models for improved epidemic tracking and forecasting. [Link to the paper on arXiv](https://doi.org/10.48550/arXiv.2506.15511)
+
 
 ---
 
