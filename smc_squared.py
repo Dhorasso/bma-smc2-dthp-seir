@@ -9,8 +9,8 @@ from state_process import state_transition
 from smc import Particle_Filter
 from pmmh import PMMH_kernel
 from resampling import resampling_style
-#from observation_dist import compute_log_weight
-
+from multiprocessing import Pool
+import os, math
 
 def BMA_SMC2(
     model_dthp, model_seir, initial_state_info_dthp, initial_theta_info_dthp,
@@ -53,6 +53,9 @@ def BMA_SMC2(
     theta_weights_dthp = np.ones((num_theta_particles, num_timesteps)) / num_theta_particles
     theta_weights_seir = theta_weights_dthp.copy()
     ESS_theta_dthp, ESS_theta_seir = np.zeros(num_timesteps), np.zeros(num_timesteps)
+
+    total_cores = os.cpu_count()
+    n_jobs = max(1, math.floor(total_cores * 0.75))
 
     # Initialize state and theta particles for both models
     def initialize_particles(model_type, initial_state_info, initial_theta_info):
