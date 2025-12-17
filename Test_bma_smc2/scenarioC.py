@@ -32,6 +32,8 @@ from smc_visualization import trace_smc, plot_smc, compute_model_average
 
 ## True parameter
 true_theta = [0.2]  # omega (decay parameter in the geometric kernel)
+# Total population 
+N_pop = 50000
 
 simulated_data = pd.read_csv('data_SB.csv')
 #visulization
@@ -302,6 +304,8 @@ for i, (state, matrix) in enumerate(matrix_dict_theta_dthp.items()):
     ci_025 = np.percentile(matrix[:, -1], 2.5)
     ci_975 = np.percentile(matrix[:, -1], 97.5)
     median_estimate = np.mean(matrix[:, -1])
+    if i == 0:
+        ax.axhline(true_theta[i], color='orange', linestyle='--', linewidth=3, label='True Value')
     ax.set_title(f'{L1[i]} = {median_estimate:.3f} (95% CrI: [{ci_025:.3f}, {ci_975:.3f}])', 
                  fontsize=18, fontweight='bold')
     ax.set_ylabel(L1[i], fontsize=25, fontweight='bold')
@@ -315,8 +319,6 @@ for i, (state, matrix) in enumerate(matrix_dict_theta_seir.items()):
     median_estimate = np.mean(matrix[:, -1])
     ax.set_title(f'{L2[i]} = {median_estimate:.3f} (95% CrI: [{ci_025:.3f}, {ci_975:.3f}])', 
                  fontsize=18, fontweight='bold')
-    if i <= 1:
-        ax.axhline(true_theta[i], color='orange', linestyle='--', linewidth=3, label='True Value')
     ax.set_xlabel('Days', fontsize=16, fontweight='bold')
     ax.set_ylabel(L2[i], fontsize=25, fontweight='bold')
 
