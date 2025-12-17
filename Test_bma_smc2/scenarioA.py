@@ -31,113 +31,32 @@ from smc_visualization import trace_smc, plot_smc, compute_model_average
 #######################################################################
 
 
-import numpy as np
-import pandas as pd
-from numpy.random import binomial
-
-def piecewise_beta(t):
-    if t <= 40:
-        return 0.32
-    elif t <= 45:
-        return 0.32 - ((0.32 - 0.14) / (45 - 40)) * (t - 40)
-    else:
-        return 0.14
-
-def seir_var_beta(y, theta, t, dt=1):
-    # Unpack variables
-    S, E, I, R, NI, _ = y  # _ used because B is recalculated
-    N = S + E+ I + R
-
-    # Unpack parameters
-    sigma, gamma = theta
-
-    # Compute current beta using piecewise rule
-    B = piecewise_beta(t)
-
-    # Transition probabilities
-    P_SE = 1 - np.exp(-B * I / N * dt)     # S -> E
-    P_EI = 1 - np.exp(-sigma * dt)         # E -> I
-    P_IR = 1 - np.exp(-gamma * dt)         # I -> R
-
-    # Sample transitions
-    B_SE = binomial(S, P_SE)               # S -> E
-    B_EI = binomial(E, P_EI)               # E -> I
-    B_IR = binomial(I, P_IR)               # I -> R
-
-    # Update compartments
-    S -= B_SE
-    E += B_SE - B_EI
-    I += B_EI - B_IR
-    R += B_IR
-    NI = B_EI  # New infections (E -> I)
-
-    # Return updated state with non-negative values
-    y_next = [max(0, val) for val in [S, E, I, R, NI, B]]
-    return y_next
-
-
-
-def solve_seir_var_beta(model, theta, InitialState, t_start, t_end, dt=1, overdispersion=0.01):
-    t_values = np.arange(t_start, t_end + dt, dt)
-    results = np.zeros((len(t_values), len(InitialState)))
-    results[0] = InitialState
-
-    for i in range(1, len(t_values)):
-        results[i] = model(results[i - 1], theta, i, dt)
-
-    results_df = pd.DataFrame(results, columns=['S', 'E', 'I', 'R', 'NI', 'B'])
-    results_df['time'] = t_values
-
-    # Sample observations from Negative Binomial
-    mean_NI = results_df['NI'].clip(lower=1e-6)  # Avoid zero mean
-    size = 1 / overdispersion  # shape parameter (r)
-    p = size / (size + mean_NI)  # success probability
-
-    # Sample from nbinom
-    results_df['obs'] =  results_df['NI']
-
-    return results_df
-
-    
-
-    
-
-# Initial conditions
-t = 0
-B = 0.32
+## True parameter
 true_theta = [1/2, 1/6]  # sigma (latency rate), gamma (recovery rate)
+# Total population 
 N_pop = 50000
-InitialState = [N_pop - 10, 0, 10, 0, 0, B]  # S, E, I, R, NI, B
-t_start = 0
-t_end = 100
-dt = 1
+## Rt=Bt/sigma  
+simulated_data = pd.read_csv('data_SB.csv')
+#visulization
+fig, axes = plt.subplots(1, 2, figsize=(14, 4))
 
-np.random.seed(123) # Set a seed for reproducibility
-simulated_data = solve_seir_var_beta(seir_var_beta, true_theta, InitialState, t_start, t_end, dt)
-simulated_data['Rt'] =simulated_data['B']/(1/6) # reproduction number
-fig, axes = plt.subplots(1, 2, figsize=(16, 5))
-
-# First subplot: Plot new infections
-axes[0].scatter(simulated_data['time'].index, simulated_data['obs'], label='New Infected')
+# Left panel: observed cases
+axes[0].plot(simulated_data['obs'], marker='o')
+axes[0].set_title('Observed Cases (obs)')
 axes[0].set_xlabel('Time')
-axes[0].set_ylabel('Population')
-axes[0].legend()
+axes[0].set_ylabel('Cases')
 axes[0].grid(True)
-axes[0].set_title('New Infections Over Time')
 
-# Second subplot: Plot transmission rate
-axes[1].plot(simulated_data['time'].index, simulated_data['Rt'], label='Reproduction nmber', color='orange')
+# Right panel: reproduction number
+axes[1].plot(simulated_data['Rt'])
+axes[1].set_title('Reproduction Number (Rt)')
 axes[1].set_xlabel('Time')
-axes[1].set_ylabel('Reproduction nmber ')
-axes[1].legend()
+axes[1].set_ylabel('Rt')
 axes[1].grid(True)
 
-# Adjust layout to avoid overlapping elements
 plt.tight_layout()
-
-# Show the plots
 plt.show()
-simulated_data
+    
 
 
 
