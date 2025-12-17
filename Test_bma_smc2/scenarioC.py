@@ -30,7 +30,29 @@ from smc_visualization import trace_smc, plot_smc, compute_model_average
 #### Generate the simulated data with time varying beta ###############
 #######################################################################
 
-simulated_data = pd.read_csv('data_SC.csv')
+## True parameter
+true_theta = [0.2]  # omega (decay parameter in the geometric kernel)
+
+simulated_data = pd.read_csv('data_SB.csv')
+#visulization
+fig, axes = plt.subplots(1, 2, figsize=(14, 4))
+
+# Left panel: observed cases
+axes[0].plot(simulated_data['obs'], marker='o')
+axes[0].set_title('Observed Cases (obs)')
+axes[0].set_xlabel('Time')
+axes[0].set_ylabel('Cases')
+axes[0].grid(True)
+
+# Right panel: reproduction number
+axes[1].plot(simulated_data['Rt'])
+axes[1].set_title('Reproduction Number (Rt)')
+axes[1].set_xlabel('Time')
+axes[1].set_ylabel('Rt')
+axes[1].grid(True)
+
+plt.tight_layout()
+plt.show()
 
 #################################################################################################
 ############ SEPTP 2: Define your observation distribution ######################################
