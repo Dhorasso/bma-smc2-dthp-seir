@@ -35,7 +35,7 @@ true_theta = [0.2]  # omega (decay parameter in the geometric kernel)
 # Total population 
 N_pop = 50000
 
-simulated_data = pd.read_csv('data_SB.csv')
+simulated_data = pd.read_csv('data_SC.csv')
 #visulization
 fig, axes = plt.subplots(1, 2, figsize=(14, 4))
 
@@ -96,26 +96,26 @@ state_info_seir = {
     'I': {'prior': [0, 15, 0, 0, 'uniform']},  # Infected
     'R': {'prior': [0, 0, 0, 0, 'uniform']},  # Removed (Recovered or Deceased)
     'NI': {'prior': [0, 0, 0,0, 'uniform']},  # Newly Infected
-    'B': {'prior': [0, np.inf, 0.725, 0.01, 'normal']},  # Transmission rate (Beta)
+    'B': {'prior': [0.25, 0.35, 0, 0, 'uniform']},  # Transmission rate (Beta)
 }
 
 theta_info_seir = {
-    'sigma': {'prior': [0.2, 0.7, 0.5, 0.05,'truncnorm','log']},  # Latency rate (Inverse of latency period)
-    'gamma': {'prior': [0.1, 0.2, 0.16, 0.05,'truncnorm','log']},  # Removal rate (Inverse of infectious period)
+    'sigma': {'prior': [0, 1, 0, 0,'uniform','log']},  # Latency rate (Inverse of latency period)
+    'gamma': {'prior': [0, 1, 0, 0,'uniform','log']},  # Removal rate (Inverse of infectious period)
     'nu_beta': {'prior': [0.05, 0.2, 0.1, 0.01, 'truncnorm', 'log']},  # Standard deviation of RW process (Beta variability)
-    'phi': {'prior': [1e-5, 0.1,0,0, 'uniform','log']}  # Overdispersion parameter
+    'phi': {'prior': [1e-5, 0.2,0,0, 'uniform','log']}  # Overdispersion parameter
 }
 
 # DTHP model state and parameter information
 state_info_dthp = {
-    'NI': {'prior': [0, 3, 0,0, 'uniform']},  # Newly Infected (lamabda_H(0))
-    'Rt': {'prior': [0, np.inf, 4.25, 0.15, 'normal']}  # Reproduction Number
+    'NI': {'prior': [0, 5, 0,0, 'uniform']},  # Newly Infected (lamabda_H(0))
+    'Rt': {'prior': [1.35, 1.42,, 4.25, 0.15, 'uniform']}  # Reproduction Number
 }
 
 theta_info_dthp = {
-    'omega_I': {'prior': [0, 1, 0.1, 0.05, 'truncnorm', 'log']},  # Decay parameter in the triggering kernel
-    'nu_beta': {'prior': [0.05, 0.2, 0.1, 0.011, 'truncnorm', 'log']},  # Standard deviation of RW process (Beta variability)
-    'phi': {'prior': [1e-5, 0.1,0,0, 'uniform','log']}  # Overdispersion parameter
+    'omega_I': {'prior': [0, 1, 0.15, 0.1, 'truncnorm', 'log']},  # Decay parameter in the triggering kernel
+    'nu_beta': {'prior': [0.05, 0.2, 0.1, 0.01, 'truncnorm', 'log']},  # Standard deviation of RW process (Beta variability)
+    'phi': {'prior': [1e-5, 0.2,0,0, 'uniform','log']}  # Overdispersion parameter
 }
 
 
@@ -123,7 +123,7 @@ theta_info_dthp = {
 
 
 
-fday=14
+fday=21
 days=len(simulated_data)-fday
 
 np.random.seed(123) # Set a seed for reproducibility
