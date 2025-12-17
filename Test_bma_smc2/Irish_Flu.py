@@ -76,15 +76,24 @@ plt.show()
 #################################################################################################
 
 # Negative Binomial log-likelihood
-def obs_dist_negative_binomial(observed_data, model_data, theta, theta_names):
+def obs_dist_negative_binomial(observed_data, model_data, theta, theta_names, pred=False):
     epsi = 1e-4
     model_est_case = np.maximum(epsi, model_data['NI'].to_numpy())
     param = dict(zip(theta_names, theta))
-    overdispersion = param.get('phi', 0.1)  # Default value for 'phi' if not provided
-    log_likelihoods = nbinom.logpmf(observed_data['obs'], 1 / overdispersion, 1 / (1 + overdispersion * model_est_case))
+    overdispersion = param.get('phi', 0.1)
+
+    r = 1 / overdispersion
+    p = 1 / (1 + overdispersion * model_est_case)
+
+    if pred:
+        pred_vals = np.random.negative_binomial(n=r, p=p)
+        model_new = model_data.copy()
+        model_new['NI'] = pred_vals
+        return model_new
+
+    log_likelihoods = nbinom.logpmf(observed_data['obs'], r, p)
     log_likelihoods[np.isnan(log_likelihoods) | np.isinf(log_likelihoods)] = -np.inf
     return log_likelihoods
-
 #################################################################################################
 ############ SEPTP 3: Run the SMC^2 #####################################################################
 # You need to defined initial conditions for the state and prior for the parameter you want to estimate
@@ -96,8 +105,8 @@ np.random.seed(123) # Set a seed for reproducibility
 
 ### SEIRS initial state and prior distribution
 N_pop = 5.16e6  # Total population
-E_0 = 1
-I0 =20# Initial number of infected individuals
+E_0 = 5
+I0 =15# Initial number of infected individuals
 
 state_info_seirs = {
     'S': {'prior': [N_pop - E_0-I0, N_pop, 0, 0, 'uniform']},  # Susceptibles
@@ -112,7 +121,7 @@ theta_info_seirs = {
     'sigma': {'prior': [1/5, 1/3, 1/4, 0.1, 'truncnorm', 'log']},  # latency rate (inverse of incubation period)
     'gamma': {'prior': [1/7.5, 1/4.5, 1/6, 0.2, 'truncnorm', 'log']}, # removal rate (inverse of infectious period)
     'nu_beta': {'prior': [0.05, 0.15, 0.1, 0.05, 'uniform', 'log']},   # standard deviation RW process 
-   'nu_beta': {'prior': [0.05, 0.2, 0.1, 0.02, 'truncnorm', 'log']},   # Volatility in transmission rate
+   'nu_beta': {'prior': [0.05, 0.15, 0.1, 0.02, 'truncnorm', 'log']},   # Volatility in transmission rate
     'phi': {'prior': [1e-5, 0.2, 0, 0, 'uniform', 'log']},  # Overdispersion parameter
 }
 ### DTHP model state and prior distribution
@@ -124,7 +133,7 @@ state_info_dthp = {
 
 theta_info_dthp = {
     'omega_I': {'prior': [0, 1, 0, 0, 'uniform', 'log']},  # Decay parameter in the triggering kernel
-   'nu_beta': {'prior': [0.05, 0.2, 0.1, 0.02, 'truncnorm', 'log']},   # Volatility in transmission rate
+   'nu_beta': {'prior': [0.05, 0.15, 0.1, 0.02, 'truncnorm', 'log']},   # Volatility in transmission rate
     'phi': {'prior': [1e-5, 0.2, 0, 0, 'uniform', 'log']},  # Overdispersion parameter
 }
 
