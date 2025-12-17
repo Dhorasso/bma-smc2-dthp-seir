@@ -152,12 +152,22 @@ simulated_data
 #################################################################################################
 
 # Negative Binomial log-likelihood
-def obs_dist_negative_binomial(observed_data, model_data, theta, theta_names):
+def obs_dist_negative_binomial(observed_data, model_data, theta, theta_names, pred=False):
     epsi = 1e-4
     model_est_case = np.maximum(epsi, model_data['NI'].to_numpy())
     param = dict(zip(theta_names, theta))
-    overdispersion = param.get('phi', 0.1)  # Default value for 'phi' if not provided
-    log_likelihoods = nbinom.logpmf(observed_data['obs'], 1 / overdispersion, 1 / (1 + overdispersion * model_est_case))
+    overdispersion = param.get('phi', 0.1)
+
+    r = 1 / overdispersion
+    p = 1 / (1 + overdispersion * model_est_case)
+
+    if pred:
+        pred_vals = np.random.negative_binomial(n=r, p=p)
+        model_new = model_data.copy()
+        model_new['NI'] = pred_vals
+        return model_new
+
+    log_likelihoods = nbinom.logpmf(observed_data['obs'], r, p)
     log_likelihoods[np.isnan(log_likelihoods) | np.isinf(log_likelihoods)] = -np.inf
     return log_likelihoods
 
