@@ -32,6 +32,8 @@ from smc_visualization import trace_smc, plot_smc, compute_model_average
 
 ## True parameter
 true_theta = [1/2, 1/6]  # sigma (latency rate), gamma (recovery rate)
+# Total population 
+N_pop = 50000
 ## Rt=Bt/sigma  
 simulated_data = pd.read_csv('data_SB.csv')
 #visulization
