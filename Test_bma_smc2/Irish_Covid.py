@@ -73,12 +73,22 @@ plt.show()
 #################################################################################################
 
 # Negative Binomial log-likelihood
-def obs_dist_negative_binomial(observed_data, model_data, theta, theta_names):
+def obs_dist_negative_binomial(observed_data, model_data, theta, theta_names, pred=False):
     epsi = 1e-4
     model_est_case = np.maximum(epsi, model_data['NI'].to_numpy())
     param = dict(zip(theta_names, theta))
-    overdispersion = param.get('phi', 0.1)  # Default value for 'phi' if not provided
-    log_likelihoods = nbinom.logpmf(observed_data['obs'], 1 / overdispersion, 1 / (1 + overdispersion * model_est_case))
+    overdispersion = param.get('phi', 0.1)
+
+    r = 1 / overdispersion
+    p = 1 / (1 + overdispersion * model_est_case)
+
+    if pred:
+        pred_vals = np.random.negative_binomial(n=r, p=p)
+        model_new = model_data.copy()
+        model_new['NI'] = pred_vals
+        return model_new
+
+    log_likelihoods = nbinom.logpmf(observed_data['obs'], r, p)
     log_likelihoods[np.isnan(log_likelihoods) | np.isinf(log_likelihoods)] = -np.inf
     return log_likelihoods
 
@@ -109,7 +119,7 @@ theta_info_seir = {
      'sigma': {'prior': [7/3, 7, 7/1.5, 0.1, 'truncnorm', 'log']},  # Latency rate
     'gamma': {'prior': [7/7, 7/5, 7/6, 0.1, 'truncnorm', 'log']},  # Recovery rate
     'alpha': {'prior': [1 / (6 * 4), 1 / (3 * 4), 1 / 2, 0.1, 'uniform', 'log']},  # Transition from R to S
-    'nu_beta': {'prior': [0.05, 0.16, 0.1, 0.02, 'uniform', 'log']},   # Volatility in transmission rate
+    'nu_beta': {'prior': [0.05, 0.15, 0.1, 0.02, 'uniform', 'log']},   # Volatility in transmission rate
     'phi': {'prior': [1e-5, 0.2, 0, 0, 'uniform', 'log']},  # Overdispersion parameter
 }
 
@@ -122,7 +132,7 @@ state_info_dthp = {
 
 theta_info_dthp = {
     'omega_I': {'prior': [0, 1, 0, 0, 'uniform', 'log']},  # Decay parameter in the triggering kernel
-   'nu_beta': {'prior': [0.05, 0.16, 0.1, 0.02, 'uniform', 'log']},   # Volatility in transmission rate
+   'nu_beta': {'prior': [0.05, 0.15, 0.1, 0.02, 'uniform', 'log']},   # Volatility in transmission rate
     'phi': {'prior': [1e-5, 0.2, 0, 0, 'uniform', 'log']},  # Overdispersion parameter
 }
 
