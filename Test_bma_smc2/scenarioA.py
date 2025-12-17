@@ -36,7 +36,7 @@ true_theta = [1/2, 1/6]  # sigma (latency rate), gamma (recovery rate)
 # Total population 
 N_pop = 50000
 ## Rt=Bt/sigma  
-simulated_data = pd.read_csv('data_SB.csv')
+simulated_data = pd.read_csv('data_SA.csv')
 #visulization
 fig, axes = plt.subplots(1, 2, figsize=(14, 4))
 
@@ -102,24 +102,24 @@ state_info_seir = {
     'I': {'prior': [0, 15, 0, 0, 'uniform']},  # Infected
     'R': {'prior': [0, 0, 0, 0, 'uniform']},  # Removed (Recovered or Deceased)
     'NI': {'prior': [0, 0, 0, 0, 'uniform']},  # Newly Infected
-    'B': {'prior': [0, np.inf, 0.32, 0.01, 'normal']},  # Transmission rate (Beta)
+    'B': {'prior': [0.7, 0.75,  0, 0, 'uniform', 'log']},  # Transmission rate (Beta)
 }
 
 theta_info_seir = {
-    'sigma': {'prior': [0.2, 0.7, 0.5, 0.05,'truncnorm','log']},  # Latency rate (Inverse of latent period)
-    'gamma': {'prior': [0, 1, 0.16, 0.05, 'truncnorm', 'log']},  # Removal rate (Inverse of infectious period)
+    'sigma': {'prior': 0, 1, 0.45, 0.1,'truncnorm','log']},  # Latency rate (Inverse of latent period)
+    'gamma': {'prior': [0, 0.2, 0.15, 0.05, 'truncnorm', 'log']},  # Removal rate (Inverse of infectious period)
     'nu_beta': {'prior': [0.05, 0.2, 0.1, 0.01, 'truncnorm', 'log']},  # Beta variability
     'phi': {'prior': [1e-5, 0.2, 0, 0, 'uniform', 'log']}  # Overdispersion parameter
 }
 
 # DTHP model state and parameter information
 state_info_dthp = {
-    'NI': {'prior': [0, 3, 0, 0, 'uniform']},  # Newly Infected
-    'Rt': {'prior': [0, np.inf, 1.8, 0.05, 'normal']}  # Reproduction Number
+    'NI': {'prior': [0, 5, 0, 0, 'uniform']},  # Newly Infected
+    'Rt': {'prior': [4, 4.5, 0, 0, 'uniform', 'log']}  # Reproduction Number
 }
 
 theta_info_dthp = {
-    'omega_I': {'prior': [0, 1, 0.1, 0.05, 'truncnorm', 'log']},  # Decay parameter in the triggering kernel
+    'omega_I': {'prior': [0, 1, 0.15, 0.05, 'truncnorm', 'log']},  # Decay parameter in the triggering kernel
     'nu_beta': {'prior': [0.05, 0.2, 0.1, 0.01, 'truncnorm', 'log']},  # Beta variability
     'phi': {'prior': [1e-5, 0.2, 0, 0, 'uniform', 'log']}  # Overdispersion parameter
 }
