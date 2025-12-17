@@ -9,24 +9,25 @@ from state_process import state_transition
 from smc import Particle_Filter
 from pmmh import PMMH_kernel
 from resampling import resampling_style
-from multiprocessing import Pool
 import os, math
+#from observation_dist import compute_log_weight
+
 
 def BMA_SMC2(
-    model_dthp, model_seir, initial_state_info_dthp, initial_theta_info_dthp,
-    initial_state_info_seir, initial_theta_info_seir, observed_data, num_state_particles,
+    model_dthp, model_sir, initial_state_info_dthp, initial_theta_info_dthp,
+    initial_state_info_sir, initial_theta_info_sir, observed_data, num_state_particles,
     num_theta_particles, observation_distribution, resampling_threshold=0.5,
     resampling_method='stratified', tw=1, pmmh_moves=5, c=0.5, n_jobs=10, 
     forecast_days=0, N=5e5,  show_progress=True
 ):
     """
-    Perform Sequential Monte Carlo squared (SMC^2) for two models (dthp and seir), estimating the state and 
+    Perform Sequential Monte Carlo squared (SMC^2) for two models (dthp and sir), estimating the state and 
     parameters using a particle filter approach, compute the posterior model probability
 
     Parameters:
-    - model_dthp, model_seir: stochatic model.
+    - model_dthp, model_sir: stochatic model.
     - initial_state_info_dthp, initial_theta_info_dthp: Initialization for the dthp model.
-    - initial_state_info_seir, initial_theta_info_seir: Initialization for the seir model.
+    - initial_state_info_sir, initial_theta_info_sir: Initialization for the sir model.
     - observed_data: Data to fit the model to.
     - num_state_particles, num_theta_particles: Number of state and theta particles.
     - resampling_threshold: Effective sample size threshold for resampling.
@@ -46,16 +47,13 @@ def BMA_SMC2(
     num_timesteps = len(observed_data)
     
     # Initialize arrays to store results
-    Z_arr_dthp, Z_arr_seir = np.zeros((num_theta_particles, num_timesteps)), np.zeros((num_theta_particles, num_timesteps))
-    Z_dthp, Z_seir = np.zeros(num_theta_particles), np.zeros(num_theta_particles)
-    model_evid_dthp, model_evid_seir = np.zeros(num_timesteps), np.zeros(num_timesteps)
-    likelihood_increment_dthp, likelihood_increment_seir = np.ones(num_theta_particles), np.ones(num_theta_particles)
+    Z_arr_dthp, Z_arr_sir = np.zeros((num_theta_particles, num_timesteps)), np.zeros((num_theta_particles, num_timesteps))
+    Z_dthp, Z_sir = np.zeros(num_theta_particles), np.zeros(num_theta_particles)
+    model_evid_dthp, model_evid_sir = np.zeros(num_timesteps), np.zeros(num_timesteps)
+    likelihood_increment_dthp, likelihood_increment_sir = np.ones(num_theta_particles), np.ones(num_theta_particles)
     theta_weights_dthp = np.ones((num_theta_particles, num_timesteps)) / num_theta_particles
-    theta_weights_seir = theta_weights_dthp.copy()
-    ESS_theta_dthp, ESS_theta_seir = np.zeros(num_timesteps), np.zeros(num_timesteps)
-
-    total_cores = os.cpu_count()
-    n_jobs = max(1, math.floor(total_cores * 0.75))
+    theta_weights_sir = theta_weights_dthp.copy()
+    ESS_theta_dthp, ESS_theta_sir = np.zeros(num_timesteps), np.zeros(num_timesteps)
 
     # Initialize state and theta particles for both models
     def initialize_particles(model_type, initial_state_info, initial_theta_info):
@@ -66,20 +64,22 @@ def BMA_SMC2(
             'current_theta': theta_init['currentThetaParticles'],
             'theta_names': theta_init['thetaName'],
             'current_state': state_init['currentStateParticles'],
-            'state_names': state_init['stateName'],
-            'state_history': np.zeros((num_timesteps, num_theta_particles, num_state_particles, len(state_init['stateName'])))
+            'state_names': state_init['stateName']
         }
     
     dthp_data = initialize_particles('dthp', initial_state_info_dthp, initial_theta_info_dthp)
-    seir_data = initialize_particles('seir', initial_state_info_seir, initial_theta_info_seir)
+    sir_data = initialize_particles('sir', initial_state_info_sir, initial_theta_info_sir)
 
     # Initialize trajectory storage for both models
     traj_theta_dthp = [{key: [] for key in ['time'] + dthp_data['theta_names']} for _ in range(num_theta_particles)]
-    traj_theta_seir = [{key: [] for key in ['time'] + seir_data['theta_names']} for _ in range(num_theta_particles)]
+    traj_theta_sir = [{key: [] for key in ['time'] + sir_data['theta_names']} for _ in range(num_theta_particles)]
 
     traj_state_dthp ={}
-    traj_state_seir ={}
+    traj_state_sir ={}
     # Initialize progress bar
+    total_cores = os.cpu_count()
+    n_jobs = max(4, math.floor(total_cores * 0.75))
+    
     if show_progress:
         progress_bar = tqdm(total=num_timesteps, desc="BMA-SMC^2 Progress")
     
@@ -88,16 +88,16 @@ def BMA_SMC2(
         t_start, t_end = (0, 0) if t == 0 else (t - 1, t)
         
         def process_particle(model_type, theta_idx):
-            model_data = dthp_data if model_type == 'dthp' else seir_data
+            model_data = dthp_data if model_type == 'dthp' else sir_data
             trans_theta = model_data['current_theta'][theta_idx]
-            theta = untransform_theta(trans_theta, initial_theta_info_dthp if model_type == 'dthp' else initial_theta_info_seir)
+            theta = untransform_theta(trans_theta, initial_theta_info_dthp if model_type == 'dthp' else initial_theta_info_sir)
             state_particles = model_data['current_state'][theta_idx]
             
             if model_type == 'dthp':
                 trajectories = model_dthp(state_particles, theta, model_data['state_names'],
                                           model_data['theta_names'], observed_data, t, N)
             else:
-                trajectories = state_transition(model_seir, theta, state_particles, model_data['state_names'], 
+                trajectories = state_transition(model_sir, theta, state_particles, model_data['state_names'], 
                                                 model_data['theta_names'], t_start, t_end)
             model_points = trajectories.to_numpy()
             
@@ -118,7 +118,7 @@ def BMA_SMC2(
             }
         
         particles_dthp = Parallel(n_jobs=n_jobs)(delayed(process_particle)('dthp', m) for m in range(num_theta_particles))
-        particles_seir = Parallel(n_jobs=n_jobs)(delayed(process_particle)('seir', m) for m in range(num_theta_particles))
+        particles_sir = Parallel(n_jobs=n_jobs)(delayed(process_particle)('sir', m) for m in range(num_theta_particles))
         
         # Update state and theta particles
         for model_data, model, initial_state_info, initial_theta_info, theta_weights, Z,  traj_theta, particles,\
@@ -126,20 +126,21 @@ def BMA_SMC2(
             (dthp_data, model_dthp, initial_state_info_dthp, initial_theta_info_dthp, theta_weights_dthp, Z_dthp, \
              traj_theta_dthp, particles_dthp, likelihood_increment_dthp, Z_arr_dthp, model_evid_dthp, 
              ESS_theta_dthp, traj_state_dthp),
-            (seir_data, model_seir, initial_state_info_seir, initial_theta_info_seir, theta_weights_seir, Z_seir, traj_theta_seir,\
-             particles_seir, likelihood_increment_seir, Z_arr_seir, model_evid_seir, ESS_theta_seir, traj_state_seir)
+            (sir_data, model_sir, initial_state_info_sir, initial_theta_info_sir, theta_weights_sir, Z_sir, traj_theta_sir,\
+             particles_sir, likelihood_increment_sir, Z_arr_sir, model_evid_sir, ESS_theta_sir, traj_state_sir)
         ]:
             model_data['current_state'] = np.array([p['state_particles'] for p in particles])
             model_data['current_theta'] = np.array([p['theta'] for p in particles])
-            model_data['state_history'][t] =  model_data['current_state']
             likelihood_increment[:] = np.array([p['likelihood'] for p in particles])
             Z_arr[:, t] = np.log(likelihood_increment)
             Z = np.sum(Z_arr[:, :t + 1], axis=1)
             
-  
-            theta_weights[:, t] = theta_weights[:, max(0,t-1)] * likelihood_increment
-            model_evid[t] = Evidence(theta_weights[:, max(0,t-1)], likelihood_increment)
-
+            if t > 0:
+                theta_weights[:, t] = theta_weights[:, t-1] * likelihood_increment
+                model_evid[t] = Evidence(theta_weights[:, t-1], likelihood_increment)
+            else:
+                theta_weights[:, t] = theta_weights[:, t] * likelihood_increment
+                model_evid[t] = Evidence(theta_weights[:, t], likelihood_increment)
             
             theta_weights[:, t] /= np.sum(theta_weights[:, t])
             ESS_theta[t] = 1 / np.sum(theta_weights[:, t] ** 2)
@@ -159,15 +160,16 @@ def BMA_SMC2(
                 # Reset weights and run the PMMH kernel
                 theta_weights[:, t] = np.ones(num_theta_particles) / num_theta_particles
                 new_particles = Parallel(n_jobs=n_jobs)(delayed(PMMH_kernel)(
-                    model, model_data['name'], Z[m], model_data['current_theta'], model_data['state_history'],
-                    model_data['theta_names'], observed_data.iloc[:t + 1], model_data['state_names'], initial_theta_info,
-                    num_state_particles, theta_mean,theta_covariance,  observation_distribution, resampling_method, m, 
-                    t, pmmh_moves, c, N=N, n_jobs=n_jobs) for m in range(num_theta_particles))
+                    model, model_data['name'], Z[m], model_data['current_theta'], model_data['current_state'][m],
+                    model_data['theta_names'], observed_data.iloc[:t + 1], model_data['state_names'], initial_theta_info, 
+                    initial_state_info, num_state_particles, theta_mean,theta_covariance,  observation_distribution,
+                    resampling_method, m, t, pmmh_moves, c, N=N, n_jobs=n_jobs) for m in range(num_theta_particles))
         
                 # Update particles and states
                 model_data['current_theta'] = np.array([new['theta'] for new in new_particles])
                 model_data['current_state'] = np.array([new['state'] for new in new_particles])
                 Z = np.array([new['Z'] for new in new_particles])
+            # Z_arr[:, :t + 1] = Z
 
         
             # Update the trajectory of theta over time
@@ -182,25 +184,65 @@ def BMA_SMC2(
             if model_data['name']=='dthp':
                 traj_theta_dthp = traj_theta
             else: 
-                traj_theta_seir = traj_theta
+                traj_theta_sir = traj_theta
     
-            # Final particle filter step for the last time step (forecasting)
+            # # Final particle filter step for the last time step (forecasting)
+            # if t == num_timesteps - 1:
+            #     # Initial state for the model
+            #     ini_state = initial_one_state(initial_state_info, num_state_particles)
+            #     current_state = np.array(ini_state['currentStateParticles'])
+            #     theta = np.median(model_data['current_theta'], axis=0)
+            #     theta = untransform_theta(theta, initial_theta_info)
+                
+            #     # Run Particle Filter for forecasting
+            #     PF_results = Particle_Filter(model, model_data['name'], model_data['state_names'], current_state, theta, 
+            #                                  model_data['theta_names'], observed_data, num_state_particles, observation_distribution,
+            #                                  resampling_method, forecast_days=forecast_days, N=N, add=1, end=True, n_jobs=n_jobs)
+            #     traj_state = PF_results['traj_state']
+            #     if model_data['name']=='dthp':
+            #         traj_state_dthp = traj_state
+            #     else: 
+            #         traj_state_sir = traj_state
+
             if t == num_timesteps - 1:
                 # Initial state for the model
                 ini_state = initial_one_state(initial_state_info, num_state_particles)
                 current_state = np.array(ini_state['currentStateParticles'])
-                theta = np.median(model_data['current_theta'], axis=0)
-                theta = untransform_theta(theta, initial_theta_info)
                 
-                # Run Particle Filter for forecasting
-                PF_results = Particle_Filter(model, model_data['name'], model_data['state_names'], current_state, theta, 
-                                             model_data['theta_names'], observed_data, num_state_particles, observation_distribution,
-                                             resampling_method, forecast_days=forecast_days, N=N, add=1, end=True, n_jobs=n_jobs)
-                traj_state = PF_results['traj_state']
-                if model_data['name']=='dthp':
-                    traj_state_dthp = traj_state
+                # Draw 100 theta particles according to their weights
+    
+                # Select a subset of 100 theta particles
+                theta_mean = np.mean(model_data['current_theta'], axis=0)
+                dists = np.linalg.norm(model_data['current_theta'] - theta_mean, axis=1)
+                idx = np.argsort(dists)[:100]
+                theta_samples = model_data['current_theta'][idx, :]
+                
+                # Function to run Particle Filter for a single theta
+                def run_pf_for_theta(theta_raw, theta_id):
+                    theta = untransform_theta(theta_raw, initial_theta_info)
+                    PF_results = Particle_Filter(
+                        model, model_data['name'], model_data['state_names'], current_state, theta,
+                        model_data['theta_names'], observed_data, num_state_particles, observation_distribution,
+                        resampling_method, forecast_days=forecast_days, N=N, add=1, end=True, n_jobs=1
+                    )
+                    traj_state = PF_results['traj_state']
+                    # Attach theta_id to each trajectory for tracking
+                    return [df.assign(theta_id=theta_id) for df in traj_state]
+            
+                # Run Particle Filter in parallel for all selected theta samples
+                all_traj_states = Parallel(n_jobs=n_jobs)(
+                    delayed(run_pf_for_theta)(theta_samples[i], i) for i in range(len(theta_samples))
+                )
+                
+                # Flatten the list of lists
+                traj_state_F = [traj for sublist in all_traj_states for traj in sublist]
+                
+                # Assign to appropriate variable based on model name
+                if model_data['name'] == 'dthp':
+                    traj_state_dthp = traj_state_F
                 else: 
-                    traj_state_seir = traj_state
+                    traj_state_sir = traj_state_F
+
         
                 # Update progress bar
         if show_progress:
@@ -215,26 +257,26 @@ def BMA_SMC2(
     
     # Calculate the evidence for both models
     EV_dthp = prod_window(model_evid_dthp, window_size=tw)
-    EV_seir = prod_window(model_evid_seir, window_size=tw)
+    EV_sir = prod_window(model_evid_sir, window_size=tw)
     
     # Calculate the weights for the models
-    W_dthp = EV_dthp / (EV_dthp + EV_seir)
+    W_dthp = EV_dthp / (EV_dthp + EV_sir)
     # Extend weights if forecast
     W_dthp = extend_array(W_dthp, num_timesteps + forecast_days)
-    W_seir = 1 - W_dthp
+    W_sir = 1 - W_dthp
     
 
     
     # Return the results from both models
     return {
         'weight_dthp': W_dthp,
-        'weight_seir': W_seir,
+        'weight_sir': W_sir,
         'traj_theta_dthp': traj_theta_dthp,
-        'traj_theta_seir': traj_theta_seir,
+        'traj_theta_sir': traj_theta_sir,
         'traj_state_dthp': traj_state_dthp,
-        'traj_state_seir': traj_state_seir,
+        'traj_state_sir': traj_state_sir,
         'ESS_theta_dthp': ESS_theta_dthp,
-        'ESS_theta_seir': ESS_theta_seir,
+        'ESS_theta_sir': ESS_theta_sir,
     }
 
 
@@ -264,3 +306,4 @@ def Evidence(theta_weights, like):
     Return the evidence at a given time
     """
     return np.average(like, weights = theta_weights)
+
