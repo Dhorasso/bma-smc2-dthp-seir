@@ -127,8 +127,8 @@ theta_info_dthp = {
 
 
 
-fday=14
-days=len(simulated_data)-fday
+fday = 21
+days = len(simulated_data)-fday
 
 np.random.seed(123) # Set a seed for reproducibility
 smc2_results = BMA_SMC2(
