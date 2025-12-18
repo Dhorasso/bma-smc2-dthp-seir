@@ -41,7 +41,7 @@ file_path = r"COVID-19_HPSC_Detailed_Statistics_Profile.csv"
 df = pd.read_csv(file_path)
 # Restrict the observations to 280 days
 st=0
-days = st+290
+days = st+293
 data = df.iloc[st:days].copy()
 
 # Ensure the 'Date' column is in datetime format
@@ -139,8 +139,8 @@ theta_info_dthp = {
 
 
 
-fday=14
-days=len(data)-fday
+fday = 21
+days = len(data)-fday
 
 np.random.seed(123) # Set a seed for reproducibility
 
