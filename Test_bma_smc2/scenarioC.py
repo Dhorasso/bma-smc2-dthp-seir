@@ -96,7 +96,7 @@ state_info_seir = {
     'I': {'prior': [0, 15, 0, 0, 'uniform']},  # Infected
     'R': {'prior': [0, 0, 0, 0, 'uniform']},  # Removed (Recovered or Deceased)
     'NI': {'prior': [0, 0, 0,0, 'uniform']},  # Newly Infected
-    'B': {'prior': [0.25, 0.35, 0, 0, 'uniform']},  # Transmission rate (Beta)
+    'B': {'prior': [0.27, 0.37, 0, 0, 'uniform']},  # Transmission rate (Beta)
 }
 
 theta_info_seir = {
