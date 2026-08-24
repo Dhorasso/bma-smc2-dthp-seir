@@ -25,22 +25,6 @@ figures/
 results/                  cached BMA-SMC² output (.pkl), see "Restyling plots" below
 ```
 
-### `src/`
-
-| file                  | contents |
-|------------------------|----------|
-| `epidemic_models.py`   | stochastic SEIR, SEIRS, and DTHP transition models |
-| `state_process.py`     | generic vectorised forward-propagation for SEIR-family models |
-| `resampling.py`        | particle resampling schemes (stratified, systematic, residual, multinomial) |
-| `priors.py`            | prior draws, parameter transforms (log/logit), particle initialisation |
-| `observation_models.py`| observation likelihoods (Poisson, normal, NB, normal-approx-NB) |
-| `particle_filter.py`   | single-model particle filter (used inside PMMH and for final forecasts) |
-| `pmmh.py`               | PMMH rejuvenation kernel + log-prior |
-| `bma_smc2.py`           | `BMA_SMC2`: the main two-model SMC² sampler |
-| `helpers.py`            | `compute_window_weights` (model weights over time), `compute_model_average`, `extend_array` |
-| `visualization.py`      | `trace_smc`, `plot_smc`, `corrected_matrix` |
-| `simulate.py`           | data-generating processes + replicate CSV cache (generate/load) |
-| `scenario_runner.py`    | shared "run BMA_SMC2 on one dataset, then plot" logic used by every scenario/application script |
 
 ## Running
 
