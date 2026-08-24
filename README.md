@@ -86,62 +86,6 @@ python -m simulation_study.scenario_A     # from the repo root
 python -m real_data_study.flu_application
 ```
 
-## Restyling plots without re-running SMC²
-
-BMA-SMC² is the slow part; plotting is not. Every scenario/application
-config accepts a `CACHE_PATH` (under `results/`) -- the first run computes
-and pickles the raw `smc2_results`, and every later run loads that pickle
-instead of recomputing (this is exactly what cell 2 of each notebook does).
-On top of that, every `plot_*` function in `src/scenario_runner.py` takes a
-`style=` dict (colors, legend labels, font sizes, axis limits -- see
-`DEFAULT_STYLE` in that file), so restyling a figure is just editing the
-dict in its cell and re-running that one cell -- no SMC² recomputation, and
-you can also reload a cached run fresh in a new session:
-
-```python
-from src.scenario_runner import load_smc2_results, plot_model_weight
-
-results = load_smc2_results("results/simulated/scenario_A/rep0.pkl")
-
-plot_model_weight(
-    results, forecast_days=21, title="Scenario A",
-    figures_dir="figures/simulated/scenario_A",
-    style={"color_dthp": "crimson", "color_seir": "navy", "ylim_weight": (0, 1)},
-)
-```
 
 See `results/README.md` for where caches live and how to force a fresh run
 (delete the `.pkl`, or pass `force_rerun=True`).
-
-## Notes on renamed / relocated code
-
-- `smc_squared.py` → `src/bma_smc2.py` (matches the function name `BMA_SMC2`)
-- `smc.py` → `src/particle_filter.py` (its one function is `Particle_Filter`;
-  the old name was easy to confuse with `smc_squared.py`)
-- `smc_visualization.py` → `src/visualization.py`
-- `ssm_prior_draw.py` → `src/priors.py`
-- `observation_dist.py` → `src/observation_models.py`
-- `models.py` → `src/epidemic_models.py`
-- Renamed every `sir`/`SIR` identifier to `seir`/`SEIR` throughout the
-  codebase (function names, variable names, dict keys, plot labels) since
-  the actual models fit are SEIR/SEIRS (they have an exposed compartment),
-  not SIR/SIRS. `stochastic_sir_model` → `stochastic_seir_model`,
-  `stochastic_sirs_model` → `stochastic_seirs_model`, `model_sir` →
-  `model_seir`, `loglik_sir` → `loglik_seir`, etc.
-- `compute_model_average`, `compute_window_weights` (the model-weight
-  calculation used to be copy-pasted inline in every notebook), and
-  `extend_array` were consolidated into the new `src/helpers.py`.
-- The "run BMA_SMC2, then plot the model weight / parameter estimates /
-  likelihood / fit" logic that was duplicated (with small variations) across
-  every scenario notebook is now the single `analyse_replicate` function in
-  `src/scenario_runner.py`, imported by every scenario/application script.
-
-## Known quirks carried over from the original code (worth a look before publishing)
-
-- `PMMH_kernel`'s `log_prior` computes a Jacobian adjustment per parameter
-  inside a loop but only adds the *last* parameter's adjustment to the
-  total — kept as-is for numerical fidelity with the original results, but
-  worth double-checking against the paper's derivation.
-- `Particle_Filter`'s trajectory-storage branch (`add=1`) previously hard-coded
-  `n_jobs=10` regardless of the `n_jobs` argument; this was fixed in
-  `src/particle_filter.py` to respect the passed-in value.
