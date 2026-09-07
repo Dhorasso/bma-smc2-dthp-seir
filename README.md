@@ -61,8 +61,7 @@ For simulated scenarios, the parameter-estimate and fit plots overlay the
 true value / true R_t, since the ground truth is known. Real-data
 applications skip that overlay (there's no ground truth to compare against).
 
-Prefer a plain script (e.g. for a batch job)? Every `.py` config file also
-has a `main()` that runs the config's `analyse_replicate(...)` end-to-end
+Every `.py` config file has a `main()` that runs the config's `analyse_replicate(...)` end-to-end
 with default styling:
 
 ```bash
